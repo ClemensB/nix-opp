@@ -1,0 +1,27 @@
+# Top-most EditorConfig file
+root = true
+
+# Unix-style newlines with a newline ending every file, utf-8 charset
+[*]
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+charset = utf-8
+
+# Ignore diffs/patches
+[*.{diff,patch}]
+end_of_line = unset
+insert_final_newline = unset
+trim_trailing_whitespace = unset
+
+# Match json/lockfiles/markdown/nix/perl/python/ruby/shell/docbook files, set indent to spaces
+[*.{json,lock,md,nix,pl,pm,py,rb,sh,xml}]
+indent_style = space
+
+# Match json/lockfiles/markdown/nix/ruby files, set indent width of two
+[*.{json,lock,md,nix,rb}]
+indent_size = 2
+
+# Match perl/python/shell scripts, set indent width of four
+[*.{pl,pm,py,sh}]
+indent_size = 4
