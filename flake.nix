@@ -15,11 +15,12 @@
             callPackage = nixpkgs.lib.callPackageWith final;
           in
             {
+              omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
               osgearth = callPackage ./pkgs/osgearth {};
             };
         
         packages.x86_64-linux = {
-          inherit (pkgs) osgearth;
+          inherit (pkgs) omnetpp osgearth;
         };
       };
 }
