@@ -1,11 +1,25 @@
 {
-  description = "A very basic flake";
+  description = "A Nix flake for the OMNeT++ ecosystem";
 
-  outputs = { self, nixpkgs }: {
-
-    packages.x86_64-linux.hello = nixpkgs.legacyPackages.x86_64-linux.hello;
-
-    defaultPackage.x86_64-linux = self.packages.x86_64-linux.hello;
-
+  inputs = {
+    nixpkgs.url = github:NixOS/nixpkgs/nixos-20.03;
   };
+
+  outputs = { self, nixpkgs }:
+    let
+      pkgs = import nixpkgs { system = "x86_64-linux"; overlays = [ self.overlay ]; };
+    in
+      {
+        overlay = final: prev:
+          let
+            callPackage = nixpkgs.lib.callPackageWith final;
+          in
+            {
+              osgearth = callPackage ./pkgs/osgearth {};
+            };
+        
+        packages.x86_64-linux = {
+          inherit (pkgs) osgearth;
+        };
+      };
 }
