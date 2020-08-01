@@ -1,0 +1,12 @@
+/src/Makefile
+
+/src/example-project
+
+/src/*.so
+/src/*.dll
+/src/*.dylib
+
+/out
+
+.qtenvrc
+
