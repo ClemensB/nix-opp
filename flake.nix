@@ -17,10 +17,17 @@
             {
               omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
               osgearth = callPackage ./pkgs/osgearth {};
+
+              example-project = callPackage ./pkgs/omnetpp/model.nix {
+                pname = "example-project";
+                version = "0.0.1";
+
+                src = "${self}/example-project";
+              };
             };
-        
+
         packages.x86_64-linux = {
-          inherit (pkgs) omnetpp osgearth;
+          inherit (pkgs) omnetpp osgearth example-project;
         };
       };
 }
