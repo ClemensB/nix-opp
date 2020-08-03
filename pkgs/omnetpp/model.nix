@@ -39,15 +39,15 @@ stdenv.mkDerivation {
         project_name="$pname"
       fi
 
-      echo "Project name is $project_name"
+      echo "Project name is \"$project_name\""
     else
-      echo 'OMNet++ project not found'
+      echo "OMNet++ project .project not found"
       exit 1
     fi
 
     makemake_feature_options=
     if [ -f .oppfeatures ]; then
-      echo "Found feature definition file"
+      echo "Found .oppfeatures, running feature tool..."
       opp_featuretool repair
       makemake_feature_options=$(opp_featuretool options)
     fi
@@ -57,9 +57,9 @@ stdenv.mkDerivation {
     libs=()
 
     # Read .oppbuildspec on how to build the project
-    while IFS="|" read source_dir makemake_flags; do
-        echo "Configuring source directory \"$source_dir\":"
-        echo "- IDE Makemake options: $makemake_flags"
+    while IFS="|" read source_dir makemake_options; do
+        echo "Configuring source directory $source_dir:"
+        echo "- IDE Makemake options: $makemake_options"
 
         output_name=
         is_library=false
@@ -71,22 +71,18 @@ stdenv.mkDerivation {
         local_libs=()
         other_options=()
 
-        set -- $makemake_flags $makemake_feature_options
+        set -- $makemake_options $makemake_feature_options
         while [[ $# -gt 0 ]]; do
           option="$1"
           case $option in
             -I)
-              arg="$2"
-              echo "Found include directory ''${arg}"
-              include_dir="$source_dir/$arg"
+              include_dir="$2"
               local_includes+=("$include_dir")
               shift
               shift
             ;;
             -I*)
-              arg="''${option:2}"
-              echo "Found include directory ''${arg}"
-              include_dir="$source_dir/$arg"
+              include_dir="''${option:2}"
               local_includes+=("$include_dir")
               shift
             ;;
@@ -127,7 +123,6 @@ stdenv.mkDerivation {
         done
 
         for extra_include in $extraIncludeDirs; do
-          echo \"''${extraIncludeDirs[@]}\"
           extra_include_resolved=$(realpath --relative-to "$source_dir" "$extra_include")
           local_includes+=("$extra_include_resolved")
         done
@@ -179,7 +174,7 @@ stdenv.mkDerivation {
         echo "- Final Makemake options: ''${makemake_options_new[@]}"
 
         pushd "$source_dir" > /dev/null
-          echo "Running opp_makemake in \"$source_dir\" with parameters \"''${makemake_options_new[@]}\"..."
+          echo "Running opp_makemake in $source_dir..."
           opp_makemake ''${makemake_options_new[@]}
         popd > /dev/null
     done < <(xml sel -t -m "/buildspec/dir[@type='makemake']" -v "@path" -o "|" -v "@makemake-options" -nl .oppbuildspec)
@@ -227,19 +222,19 @@ stdenv.mkDerivation {
     for nedfolder in "''${nedfolders[@]}"; do
       pushd $nedfolder > /dev/null
         package_name=.
-        target_nedpath_base="/share/ned"
+        target_nedpath_base="share/ned"
 
         if [ -f package.ned ]; then
           while read package; do
             package_name=$package
-            target_nedpath_base="/share/ned/''${package//./\/}"
+            target_nedpath_base="share/ned/''${package//./\/}"
           done < <(sed -En 's/package\s+([\a-z_.]+);/\1/p' package.ned)
 
           # Remove package declaration
           sed -Ei '/package\s+([\a-z_.]+);/d' package.ned
         fi
 
-        target_nedpath="$out$target_nedpath_base"
+        target_nedpath="$out/$target_nedpath_base"
 
         echo "Installing NEDs from $nedfolder for package $package_name to $target_nedpath_base..."
         mkdir -p "$target_nedpath"
@@ -251,7 +246,7 @@ stdenv.mkDerivation {
     for package in "''${nedexclusions[@]}"; do
       target_package="$out/share/ned/''${package//./\/}"
       if [ -e "$target_package" ]; then
-        echo "Found excluded package $package at $target_package, removing"
+        echo "Removing excluded package $package"
         rm -r "$target_package"
       else
         echo "Did not find excluded package $package"
