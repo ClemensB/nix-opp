@@ -24,10 +24,24 @@
 
                 src = "${self}/example-project";
               };
+
+              inet = callPackage ./pkgs/omnetpp/model.nix {
+                pname = "inet";
+                version = "4.2.0";
+
+                src = final.fetchFromGitHub {
+                  owner = "inet-framework";
+                  repo = "inet";
+                  rev = "cb6c37b3dcb76b0cecf584e87e777d965bf1ca6c";
+                  sha256 = "sha256-oxCz5Dwx5/NeINPAaXmx6Ie/gcMLu9pmVb2A35e0C6s=";
+                };
+
+                extraIncludeDirs = [ "src" ];
+              };
             };
 
         packages.x86_64-linux = {
-          inherit (pkgs) omnetpp osgearth example-project;
+          inherit (pkgs) omnetpp osgearth example-project inet;
         };
       };
 }

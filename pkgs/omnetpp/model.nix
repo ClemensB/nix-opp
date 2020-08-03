@@ -5,6 +5,8 @@
 
   buildInputs ? [],
 
+  extraIncludeDirs ? [],
+
   stdenv,
 
   omnetpp,
@@ -24,14 +26,22 @@ stdenv.mkDerivation {
     omnetpp
   ];
 
+  inherit extraIncludeDirs;
+
   configurePhase = ''
     runHook preConfigure
 
     if [ -f .project ]; then
       project_name="''${PWD##*/}"
+
+      if [ "$project_name" == "source" ]; then
+        echo "Project name \"$project_name\" is probably wrong, setting it to package name \"$pname\" instead"
+        project_name="$pname"
+      fi
+
       echo "Project name is $project_name"
     else
-      echo 'OMNet++ project file not found'
+      echo 'OMNet++ project not found'
       exit 1
     fi
 
@@ -51,7 +61,7 @@ stdenv.mkDerivation {
         echo "Configuring source directory \"$source_dir\":"
         echo "- IDE Makemake options: $makemake_flags"
 
-        output_name=$project_name
+        output_name=
         is_library=false
         export_include=false
         export_library=false
@@ -61,7 +71,7 @@ stdenv.mkDerivation {
         local_libs=()
         other_options=()
 
-        set -- $makemake_flags
+        set -- $makemake_flags $makemake_feature_options
         while [[ $# -gt 0 ]]; do
           option="$1"
           case $option in
@@ -81,13 +91,15 @@ stdenv.mkDerivation {
               shift
             ;;
             -o)
-              arg="$2"
               output_name="$2"
               shift
               shift
             ;;
+            --make-so)
+              is_library=true
+              shift
+            ;;
             --meta:export-include-path)
-              echo "Detected meta option ''${option#--meta:}, installing headers"
               export_include=true
               shift
             ;;
@@ -95,12 +107,12 @@ stdenv.mkDerivation {
               export_library=true
               shift
             ;;
-            --meta:recurse)
-              # Doesn't matter
+            --meta:recurse | --meta:feature-cflags | --meta:feature-ldflags)
+              # Ignore
               shift
             ;;
             --meta:use-exported-libs)
-              # We always use exported libs
+              # Ignore, we always use exported libs
               shift
             ;;
             --meta:*)
@@ -114,6 +126,18 @@ stdenv.mkDerivation {
           esac
         done
 
+        for extra_include in $extraIncludeDirs; do
+          echo \"''${extraIncludeDirs[@]}\"
+          extra_include_resolved=$(realpath --relative-to "$source_dir" "$extra_include")
+          local_includes+=("$extra_include_resolved")
+        done
+
+        if [ -z "$output_name" ]; then
+          output_name=$project_name
+        fi
+
+        echo "- Include directories: ''${local_includes[@]}"
+
         if ! $is_library; then
           echo -n "- Executable: "
           output_file_name="$output_name"
@@ -124,7 +148,7 @@ stdenv.mkDerivation {
         output_file_path="$source_dir/$output_file_name"
         echo "$output_file_path"
 
-        if $is_binary; then
+        if ! $is_library; then
           bins+=("$output_file_path")
         fi
 
@@ -134,18 +158,29 @@ stdenv.mkDerivation {
         fi
 
         if $export_include; then
-          echo "Exporting include directories: ''${local_includes[@]}"
-          include+=(''${local_includes[@]})
+          echo "- Exporting headers"
+          for local_include in "''${local_includes[@]}"; do
+            local_include_resolved=$(realpath --relative-to "$PWD" "$source_dir/$local_include")
+            include+=("$local_include_resolved")
+          done
         fi
 
-        echo "- Other options: $other_options"
+        echo "- Other options: ''${other_options[@]}"
 
-        makemake_options_new=(-o "$output_name" ''${local_includes[@]/#/-I } "''${other_options[@]}")
+        makemake_options_new=(
+          -o "$output_name"
+          ''${local_includes[@]/#/-I }
+          "''${other_options[@]}"
+        )
+
+        if $is_library; then
+          makemake_options_new+=("--make-so")
+        fi
         echo "- Final Makemake options: ''${makemake_options_new[@]}"
 
         pushd "$source_dir" > /dev/null
-          echo "Running opp_makemake in \"$source_dir\" with parameters \"''${makemake_options_new[@]} $makemake_feature_options\"..."
-          opp_makemake ''${makemake_options_new[@]} $makemake_feature_options
+          echo "Running opp_makemake in \"$source_dir\" with parameters \"''${makemake_options_new[@]}\"..."
+          opp_makemake ''${makemake_options_new[@]}
         popd > /dev/null
     done < <(xml sel -t -m "/buildspec/dir[@type='makemake']" -v "@path" -o "|" -v "@makemake-options" -nl .oppbuildspec)
 
