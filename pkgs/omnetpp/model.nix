@@ -1,32 +1,38 @@
 {
-  pname,
-  version,
-  src,
-
-  buildInputs ? [],
-
-  extraIncludeDirs ? [],
-
+  lib,
+  makeWrapper,
   stdenv,
 
   omnetpp,
   xmlstarlet
 }:
 
-stdenv.mkDerivation {
-  inherit pname version;
+{
+  name ? "${attrs.pname}-${attrs.version}",
 
-  inherit src;
+  pname,
+  version,
 
-  nativeBuildInputs = [
+  buildInputs ? [],
+  nativeBuildInputs ? [],
+
+  enableParallelBuilding ? true,
+  makeFlags ? [],
+
+  extraIncludeDirs ? [],
+
+  ...
+} @ attrs:
+
+stdenv.mkDerivation (attrs // {
+  nativeBuildInputs = nativeBuildInputs ++ [
+    makeWrapper
     xmlstarlet
   ];
 
   buildInputs = buildInputs ++ [
     omnetpp
   ];
-
-  inherit extraIncludeDirs;
 
   configurePhase = ''
     runHook preConfigure
@@ -127,6 +133,15 @@ stdenv.mkDerivation {
           local_includes+=("$extra_include_resolved")
         done
 
+        # Add includes for $NEDPATH entries
+        ned_includes=()
+        IFS=':'; ned_path=($NEDPATH); unset IFS
+        for entry in "''${ned_path[@]}"; do
+          if [ -d "$entry" ]; then
+            ned_includes+=("$entry")
+          fi
+        done
+
         if [ -z "$output_name" ]; then
           output_name=$project_name
         fi
@@ -165,6 +180,7 @@ stdenv.mkDerivation {
         makemake_options_new=(
           -o "$output_name"
           ''${local_includes[@]/#/-I }
+          ''${ned_includes[@]/#/-I }
           "''${other_options[@]}"
         )
 
@@ -196,8 +212,8 @@ stdenv.mkDerivation {
     runHook postConfigure
   '';
 
-  enableParallelBuilding = true;
-  makeFlags = [ "MODE=release" ];
+  inherit enableParallelBuilding;
+  makeFlags = makeFlags ++ [ "MODE=release" ];
 
   installPhase = ''
     runHook preInstall
@@ -212,6 +228,8 @@ stdenv.mkDerivation {
     for bin in "''${bins[@]}"; do
       mkdir -p "$out/bin"
       cp $bin "$out/bin"
+      wrapProgram "$out/bin/''${bin##*/}" \
+        --set NEDPATH "''${NEDPATH}''${NEDPATH:+:}$out/share/omnetpp/ned"
     done
 
     for lib in "''${libs[@]}"; do
@@ -222,23 +240,23 @@ stdenv.mkDerivation {
     for nedfolder in "''${nedfolders[@]}"; do
       pushd $nedfolder > /dev/null
         package_name=.
-        target_nedpath_base="share/ned"
+        target_nedpath_base="share/omnetpp/ned"
 
         if [ -f package.ned ]; then
           while read package; do
             package_name=$package
-            target_nedpath_base="share/ned/''${package//./\/}"
+            target_nedpath_base="share/omnetpp/ned/''${package//./\/}"
           done < <(sed -En 's/package\s+([\a-z_.]+);/\1/p' package.ned)
 
           # Remove package declaration
-          sed -Ei '/package\s+([\a-z_.]+);/d' package.ned
+          # sed -Ei '/package\s+([\a-z_.]+);/d' package.ned
         fi
 
         target_nedpath="$out/$target_nedpath_base"
 
         echo "Installing NEDs from $nedfolder for package $package_name to $target_nedpath_base..."
         mkdir -p "$target_nedpath"
-        find . -name '*.ned' -exec cp --parents '{}' "$target_nedpath" \;
+        find . \( -name '*.ned' -or -name '*.msg' \) -exec cp --parents '{}' "$target_nedpath" \;
       popd > /dev/null
     done
 
@@ -253,6 +271,11 @@ stdenv.mkDerivation {
       fi
     done
 
+    if [ -d images ]; then
+      mkdir -p $out/share/omnetpp
+      cp -r images $out/share/omnetpp/
+    fi
+
     runHook postInstall
   '';
-}
+})

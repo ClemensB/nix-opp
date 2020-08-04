@@ -18,14 +18,14 @@
               omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
               osgearth = callPackage ./pkgs/osgearth {};
 
-              example-project = callPackage ./pkgs/omnetpp/model.nix {
+              example-project = callPackage ./pkgs/omnetpp/model.nix {} {
                 pname = "example-project";
                 version = "0.0.1";
 
                 src = "${self}/example-project";
               };
 
-              inet = callPackage ./pkgs/omnetpp/model.nix {
+              inet = callPackage ./pkgs/omnetpp/model.nix {} {
                 pname = "inet";
                 version = "4.2.0";
 
@@ -39,16 +39,35 @@
                 extraIncludeDirs = [ "src" ];
               };
 
-              veins = callPackage ./pkgs/omnetpp/model.nix {
+              veins = callPackage ./pkgs/omnetpp/model.nix {} {
                 pname = "veins";
-                version = "5.0";
+                version = "5.0-git";
 
                 src = final.fetchFromGitHub {
                   owner = "sommer";
                   repo = "veins";
-                  rev = "7663eebc534ae3d9caa02ff2fea74fcce7c576ef";
-                  sha256 = "sha256-Z+EZEPQ5mkQt4UJEw3k7kqfrkCvg4oQcqtukc3UDlcA=";
+                  rev = "c6e7ac7c04d0767fb31376d6f7f106ac85c1e4bb";
+                  sha256 = "sha256-4wxKYVtVWhhjt9vwHJcRFh/J8dclOqKtCtKZQZHCn58=";
                 };
+              };
+
+              veins_inet = callPackage ./pkgs/omnetpp/model.nix {} {
+                pname = "veins_inet";
+                version = "4.0-git";
+
+                src = final.fetchFromGitHub {
+                  owner = "sommer";
+                  repo = "veins";
+                  rev = "c6e7ac7c04d0767fb31376d6f7f106ac85c1e4bb";
+                  sha256 = "sha256-4wxKYVtVWhhjt9vwHJcRFh/J8dclOqKtCtKZQZHCn58=";
+                };
+
+                sourceRoot = "source/subprojects/veins_inet";
+
+                buildInputs = with final; [
+                  inet
+                  veins
+                ];
               };
             };
 
@@ -59,6 +78,7 @@
 
             inet
             veins
+            veins_inet
 
             example-project;
         };

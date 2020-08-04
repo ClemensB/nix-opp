@@ -46,7 +46,7 @@ let
     qtbase.dev
     qtbase.out
   ];
-  
+
 in stdenv.mkDerivation rec {
   name = "omnetpp-${version}";
   version = "5.6.1";
@@ -184,6 +184,13 @@ in stdenv.mkDerivation rec {
     (writeScript "setupHook.sh" ''
       export OMNETPP_ROOT=@out@/share/omnetpp
       export OMNETPP_CONFIGFILE=@out@/share/omnetpp/Makefile.inc
+
+      addOppParams() {
+        addToSearchPath NEDPATH $1/share/omnetpp/ned
+        addToSearchPath OMNETPP_IMAGE_PATH $1/share/omnetpp/images
+      }
+
+      addEnvHooks "$targetOffset" addOppParams
     '')
   ];
 
