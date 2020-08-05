@@ -46,10 +46,10 @@
                 version = "5.0-git";
 
                 src = final.fetchFromGitHub {
-                  owner = "sommer";
+                  owner = "ClemensB";
                   repo = "veins";
-                  rev = "c6e7ac7c04d0767fb31376d6f7f106ac85c1e4bb";
-                  sha256 = "sha256-4wxKYVtVWhhjt9vwHJcRFh/J8dclOqKtCtKZQZHCn58=";
+                  rev = "e9fcb936f17f9938be8d8f46be2d086f05744bf8";
+                  sha256 = "sha256-pAJ9IiKry+uwVz3UizzJ2fzhmucU7b2Gm/RtdvHc4oI=";
                 };
               };
 
@@ -57,13 +57,7 @@
                 pname = "veins_inet";
                 version = "4.0-git";
 
-                src = final.fetchFromGitHub {
-                  owner = "sommer";
-                  repo = "veins";
-                  rev = "c6e7ac7c04d0767fb31376d6f7f106ac85c1e4bb";
-                  sha256 = "sha256-4wxKYVtVWhhjt9vwHJcRFh/J8dclOqKtCtKZQZHCn58=";
-                };
-
+                src = final.veins.src;
                 sourceRoot = "source/subprojects/veins_inet";
 
                 buildInputs = with final; [
