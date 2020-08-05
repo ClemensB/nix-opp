@@ -20,6 +20,8 @@
               omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
               buildOmnetppModel = callPackage ./pkgs/omnetpp/model.nix {};
 
+              sumo = callPackage ./pkgs/sumo {};
+
               example-project = final.buildOmnetppModel {
                 pname = "example-project";
                 version = "0.0.1";
@@ -72,6 +74,8 @@
             osgearth
 
             omnetpp
+
+            sumo
 
             inet
             veins
