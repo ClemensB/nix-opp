@@ -15,17 +15,19 @@
             callPackage = nixpkgs.lib.callPackageWith final;
           in
             {
-              omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
               osgearth = callPackage ./pkgs/osgearth {};
 
-              example-project = callPackage ./pkgs/omnetpp/model.nix {} {
+              omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
+              buildOmnetppModel = callPackage ./pkgs/omnetpp/model.nix {};
+
+              example-project = final.buildOmnetppModel {
                 pname = "example-project";
                 version = "0.0.1";
 
                 src = "${self}/example-project";
               };
 
-              inet = callPackage ./pkgs/omnetpp/model.nix {} {
+              inet = final.buildOmnetppModel {
                 pname = "inet";
                 version = "4.2.0";
 
@@ -39,7 +41,7 @@
                 extraIncludeDirs = [ "src" ];
               };
 
-              veins = callPackage ./pkgs/omnetpp/model.nix {} {
+              veins = final.buildOmnetppModel {
                 pname = "veins";
                 version = "5.0-git";
 
@@ -51,7 +53,7 @@
                 };
               };
 
-              veins_inet = callPackage ./pkgs/omnetpp/model.nix {} {
+              veins_inet = final.buildOmnetppModel {
                 pname = "veins_inet";
                 version = "4.0-git";
 
@@ -74,6 +76,7 @@
         packages.x86_64-linux = {
           inherit (pkgs)
             osgearth
+
             omnetpp
 
             inet
