@@ -2,6 +2,7 @@
   lib,
   makeWrapper,
   stdenv,
+  writeScript,
 
   omnetpp,
   xmlstarlet
@@ -61,6 +62,7 @@ stdenv.mkDerivation (attrs // {
     include=()
     bins=()
     libs=()
+    exported_libs=()
 
     # Read .oppbuildspec on how to build the project
     while IFS="|" read source_dir makemake_options; do
@@ -162,9 +164,13 @@ stdenv.mkDerivation (attrs // {
           bins+=("$output_file_path")
         fi
 
+        if $is_library; then
+          libs+=("$output_file_path")
+        fi
+
         if $is_library && $export_library; then
           echo "- Exporting library"
-          libs+=("$output_file_path")
+          exported_libs+=("$output_file_path")
         fi
 
         if $export_include; then
@@ -275,6 +281,23 @@ stdenv.mkDerivation (attrs // {
       mkdir -p $out/share/omnetpp
       cp -r images $out/share/omnetpp/
     fi
+
+    exported_libs_abs=()
+    for lib in "''${exported_libs[@]}"; do
+      exported_libs_abs+=("$out/lib/''${lib##*/}")
+    done
+
+
+    if [ ''${#exported_libs_abs[@]} -gt 0 ]; then
+      mkdir -p $out/nix-support
+      for lib in "''${exported_libs_abs[@]}"; do
+        echo $lib >> $out/nix-support/opp-libs
+      done
+    fi
+
+    # NIX_OPP_LIBS=''${exported_libs_abs[*]// /:}
+    # mkdir -p $out/nix-support
+    # echo "export NIX_OPP_LIBS=\"\$NIX_OPP_LIBS\''${NIX_OPP_LIBS:+:}$NIX_OPP_LIBS\"" >> $out/nix-support/setup-hook
 
     runHook postInstall
   '';

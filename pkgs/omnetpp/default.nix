@@ -36,7 +36,17 @@
 
   # Provided by the Qt5 package set
   env,
-  qtbase
+  qtbase,
+
+  withQtenv ? true,
+  withOsg ? true,
+  withOsgEarth ? true,
+
+  buildDebug ? true,
+  buildSamples ? true,
+
+  installIDE ? true,
+  installDoc ? true
 }:
 let
   # The way OMNeT++ checks for Qt5 requires all files to reside in the same derivation
@@ -46,6 +56,8 @@ let
     qtbase.dev
     qtbase.out
   ];
+
+  boolToYesNo = b: if b then "yes" else "no";
 
 in stdenv.mkDerivation rec {
   name = "omnetpp-${version}";
@@ -67,19 +79,23 @@ in stdenv.mkDerivation rec {
     openmpi
     perl
     python2
-    qt5
     zlib
+  ] ++ lib.optionals withQtenv [
+    libGL
+    qt5
   ];
 
-  propagatedBuildInputs = [
+  propagatedBuildInputs = lib.optionals withOsg [
     libGL
     openscenegraph
+  ] ++ lib.optionals withOsgEarth [
     osgearth
   ];
 
-  outputs = [ "out" "ide" "doc" "samples" ];
-
-  enableParallelBuilding = true;
+  outputs = [ "out" ]
+    ++ lib.optional installDoc "doc"
+    ++ lib.optional installIDE "ide"
+    ++ lib.optional buildSamples "samples";
 
   postPatch = ''
     # Don't write to $HOME
@@ -102,11 +118,36 @@ in stdenv.mkDerivation rec {
 
     # Prematurely patch shebangs for utils since they are used during build
     patchShebangs src/utils
+
+    cat << EOF > configure.user
+    WITH_QTENV=${boolToYesNo withQtenv}
+    WITH_OSG=${boolToYesNo withOsg}
+    WITH_OSGEARTH=${boolToYesNo withOsgEarth}
+
+    WITH_NETBUILDER=yes
+    WITH_PARSIM=yes
+    EOF
   '';
 
-  preBuild = ''
+  inherit buildDebug;
+
+  preBuild = lib.optionalString buildDebug ''
     # Make sure debug information points to $out instead of /build
     export NIX_CFLAGS_COMPILE="-fdebug-prefix-map=/build/$name/src=$out/share/omnetpp/src $NIX_CFLAGS_COMPILE"
+  '';
+
+  enableParallelBuilding = true;
+  buildModes = [ "release" ] ++ lib.optional buildDebug "debug";
+  buildTargets = [ "base" ] ++ lib.optional buildSamples "samples";
+
+  buildPhase = ''
+    runHook preBuild
+
+    for mode in $buildModes; do
+      make MODE=$mode ''${enableParallelBuilding:+-j''${NIX_BUILD_CORES} -l''${NIX_BUILD_CORES}} $buildTargets
+    done
+
+    runHook postBuild
   '';
 
   installPhase = let
@@ -122,8 +163,10 @@ in stdenv.mkDerivation rec {
   in ''
     runHook preInstall
 
+    echo "Installing OMNeT++ core..."
+
     mkdir -p "$out/share/omnetpp"
-    cp -r bin include lib src images misc "$out/share/omnetpp"
+    cp -r bin include lib images "$out/share/omnetpp"
     ln -s "$out/share/omnetpp/"{bin,include,lib} "$out/"
 
     # Remove IDE launchers
@@ -137,25 +180,39 @@ in stdenv.mkDerivation rec {
     echo "#!$SHELL" > "$out/bin/opp_configfilepath"
     echo "echo '$out/share/omnetpp/Makefile.inc'" >> "$out/bin/opp_configfilepath"
 
-    # Install documentation
-    mkdir -p "$doc/share/omnetpp"
-    cp -r doc "$doc/share/omnetpp/"
+    if [ "$buildDebug" == "1" ]; then
+      cp -r src "$out/share/omnetpp"
+    fi
 
-    # Install IDE
-    mkdir -p "$ide/share/omnetpp"
-    cp -r ide "$ide/share/omnetpp/"
-    cp -r "${desktopItem}/share/applications" "$ide/share/"
-    mkdir "$ide/share/icons"
-    ln -s "$ide/share/omnetpp/ide/icon.png" "$ide/share/icons/omnetpp.png"
+    if ! [ -z ''${doc+x} ]; then
+      echo "Installing documentation..."
 
-    # Clean up samples
-    for sample in samples/*/; do
-      rm -rf "$sample"out
-    done
+      mkdir -p "$doc/share/omnetpp"
+      cp -r doc "$doc/share/omnetpp/"
+    fi
 
-    # Install samples
-    mkdir -p "$samples/share/omnetpp"
-    cp -r samples "$samples/share/omnetpp/"
+    if ! [ -z ''${ide+x} ]; then
+      echo "Installing IDE..."
+
+      mkdir -p "$ide/share/omnetpp"
+      cp -r ide "$ide/share/omnetpp/"
+      cp -r "${desktopItem}/share/applications" "$ide/share/"
+      mkdir "$ide/share/icons"
+      ln -s "$ide/share/omnetpp/ide/icon.png" "$ide/share/icons/omnetpp.png"
+    fi
+
+    if ! [ -z ''${samples+x} ]; then
+      echo "Installing samples..."
+
+      # Clean up samples
+      for sample in samples/*/; do
+        rm -rf "$sample"out
+      done
+
+      # Install samples
+      mkdir -p "$samples/share/omnetpp"
+      cp -r samples "$samples/share/omnetpp/"
+    fi
 
     runHook postInstall
   '';
@@ -168,26 +225,60 @@ in stdenv.mkDerivation rec {
       patchelf --set-rpath "$NEW_RPATH" "$1"
     }
     export -f pre_strip_rpath
-    find "$out" "$samples" -type f -executable -exec $SHELL -c 'pre_strip_rpath "$0"' {} \;
+    find "$out" -type f -executable -exec $SHELL -c 'pre_strip_rpath "$0"' {} \;
 
-    # Patch IDE binary
-    interpreter=$(echo ${stdenv.glibc.out}/lib/ld-linux*.so.2)
-    patchelf --set-interpreter $interpreter $ide/share/omnetpp/ide/omnetpp
+    if ! [ -z ''${samples+x} ];  then
+      find "$samples" -type f -executable -exec $SHELL -c 'pre_strip_rpath "$0"' {} \;
+    fi
 
-    # Create wrapper for IDE
-    makeWrapper "$ide/share/omnetpp/ide/omnetpp" "$ide/bin/omnetpp" \
-      --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ glib gtk3-x11 webkitgtk xorg.libXtst ]} \
-      --prefix PATH : "${jdk11}/bin:$out/bin:${graphviz}/bin:${doxygen}/bin:${gdb}/bin"
+    if ! [ -z ''${ide+x} ];  then
+      # Patch IDE binary
+      interpreter=$(echo ${stdenv.glibc.out}/lib/ld-linux*.so.2)
+      patchelf --set-interpreter $interpreter $ide/share/omnetpp/ide/omnetpp
+
+      # Create wrapper for IDE
+      makeWrapper "$ide/share/omnetpp/ide/omnetpp" "$ide/bin/omnetpp" \
+        --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ glib gtk3-x11 webkitgtk xorg.libXtst ]} \
+        --prefix PATH : "${jdk11}/bin:$out/bin:${graphviz}/bin:${doxygen}/bin:${gdb}/bin"
+    fi
   '';
 
   setupHooks = [
     (writeScript "setupHook.sh" ''
+      echo "OMNeT++ setup hook"
+
       export OMNETPP_ROOT=@out@/share/omnetpp
       export OMNETPP_CONFIGFILE=@out@/share/omnetpp/Makefile.inc
 
+      addToFileSearchPathWithCustomDelimiter() {
+          local delimiter="$1"
+          local varName="$2"
+          local file="$3"
+          if [ -f "$file" ]; then
+              export "''${varName}=''${!varName:+''${!varName}''${delimiter}}''${file}"
+          fi
+      }
+
+      addToFileSearchPath() {
+          addToFileSearchPathWithCustomDelimiter ":" "$@"
+      }
+
       addOppParams() {
+        echo "Adding OMNeT++ parameters for $1"
+
         addToSearchPath NEDPATH $1/share/omnetpp/ned
         addToSearchPath OMNETPP_IMAGE_PATH $1/share/omnetpp/images
+
+        if [ -f $1/nix-support/opp-libs ]; then
+          echo "Found $1/nix-support/opp-libs"
+
+          readarray -t opp_libs < $1/nix-support/opp-libs
+          for opp_lib in "''${opp_libs[@]}"; do
+            echo "Adding $opp_lib to \$NIX_OMNETPP_LIBS"
+            addToFileSearchPath NIX_OMNETPP_LIBS $opp_lib
+            echo "\$NIX_OMNETPP_LIBS is now $NIX_OMNETPP_LIBS"
+          done
+        fi
       }
 
       addEnvHooks "$targetOffset" addOppParams
