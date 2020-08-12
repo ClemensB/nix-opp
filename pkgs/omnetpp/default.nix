@@ -245,8 +245,6 @@ in stdenv.mkDerivation rec {
 
   setupHooks = [
     (writeScript "setupHook.sh" ''
-      echo "OMNeT++ setup hook"
-
       export OMNETPP_ROOT=@out@/share/omnetpp
       export OMNETPP_CONFIGFILE=@out@/share/omnetpp/Makefile.inc
 
@@ -264,19 +262,13 @@ in stdenv.mkDerivation rec {
       }
 
       addOppParams() {
-        echo "Adding OMNeT++ parameters for $1"
-
         addToSearchPath NEDPATH $1/share/omnetpp/ned
         addToSearchPath OMNETPP_IMAGE_PATH $1/share/omnetpp/images
 
         if [ -f $1/nix-support/opp-libs ]; then
-          echo "Found $1/nix-support/opp-libs"
-
           readarray -t opp_libs < $1/nix-support/opp-libs
           for opp_lib in "''${opp_libs[@]}"; do
-            echo "Adding $opp_lib to \$NIX_OMNETPP_LIBS"
             addToFileSearchPath NIX_OMNETPP_LIBS $opp_lib
-            echo "\$NIX_OMNETPP_LIBS is now $NIX_OMNETPP_LIBS"
           done
         fi
       }
