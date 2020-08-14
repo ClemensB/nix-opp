@@ -18,18 +18,17 @@
               osgearth = callPackage ./pkgs/osgearth {};
 
               omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
-              buildOmnetppModel = callPackage ./pkgs/omnetpp/model.nix {};
 
               sumo = callPackage ./pkgs/sumo {};
 
-              example-project = final.buildOmnetppModel {
+              example-project = final.omnetpp.buildModel {
                 pname = "example-project";
                 version = "0.0.1";
 
                 src = "${self}/example-project";
               };
 
-              inet = final.buildOmnetppModel {
+              inet = final.omnetpp.buildModel {
                 pname = "inet";
                 version = "4.2.0";
 
@@ -43,7 +42,7 @@
                 extraIncludeDirs = [ "src" ];
               };
 
-              veins = final.buildOmnetppModel {
+              veins = final.omnetpp.buildModel {
                 pname = "veins";
                 version = "5.0-git";
 
@@ -55,7 +54,7 @@
                 };
               };
 
-              veins_inet = final.buildOmnetppModel {
+              veins_inet = final.omnetpp.buildModel {
                 pname = "veins_inet";
                 version = "4.0-git";
 
