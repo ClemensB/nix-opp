@@ -1,4 +1,6 @@
 {
+  lib,
+
   stdenv,
 
   fetchFromGitHub,
@@ -28,8 +30,21 @@
   swig,
   xercesc,
   xorg,
-  zlib
+  zlib,
+
+  withEigen ? true,
+  withFfmpeg ? true,
+  withGDAL ? true,
+  withGL2PS ? true,
+  withGUI ? true,
+  withOSG ? true,
+  withProj ? true,
+  withSWIG ? true
 }:
+
+assert withFfmpeg -> withGUI;
+assert withGL2PS -> withGUI;
+assert withOSG -> withGUI;
 
 stdenv.mkDerivation rec {
   name = "sumo-${version}";
@@ -49,29 +64,30 @@ stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
-    eigen
-    ffmpeg
-    fontconfig # Not checked by configure
-    fox_1_6
-    freetype # Not checked by configure
-    gdal
-    gl2ps
-    gtest
-    jdk
-    libGL # Not checked by configure
-    libGLU # Not checked by configure
-    libjpeg # Not checked by configure
-    libtiff # Not checked by configure
-    openscenegraph
-    proj
-    swig
+    # gtest
+    # jdk
     xercesc
     zlib
 
     (python3.withPackages (ps: with ps; [
       setuptools
     ]))
-  ] ++ (with xorg; [
+  ] ++ lib.optionals withEigen [
+    eigen
+  ] ++ lib.optionals withFfmpeg [
+    ffmpeg
+  ]  ++ lib.optionals withGDAL [
+    gdal
+  ] ++ lib.optionals withGL2PS [
+    gl2ps
+  ] ++ lib.optionals withGUI (with xorg; [
+    fox_1_6
+
+    libGL # Not checked by configure
+    libGLU # Not checked by configure
+    libjpeg # Not checked by configure
+    libtiff # Not checked by configure
+
     libX11
     libXcursor # Not checked by configure
     libXext # Not checked by configure
@@ -79,9 +95,15 @@ stdenv.mkDerivation rec {
     libXft # Not checked by configure
     libXrandr # Not checked by configure
     libXrender # Not checked by configure
-  ]);
+  ]) ++ lib.optionals withOSG [
+    openscenegraph
+  ] ++ lib.optionals withProj [
+    proj
+  ] ++ lib.optionals withSWIG [
+    swig
+  ];
 
-  enableParallelBuild = true;
+  outputs = [ "out" "tools" "pythonPackage" ];
 
   postInstall = ''
     # Add SUMO_HOME to environment of binaries
@@ -89,7 +111,17 @@ stdenv.mkDerivation rec {
       wrapProgram "$f" \
         --set SUMO_HOME "$out"/share/sumo
     done
+
+    # Move tools
+    mv $out/share/sumo/tools $tools
+
+    # Move python package (Package properly later if required)
+    mkdir -p $pythonPackage/lib
+    mv $out/lib/python* $pythonPackage/lib
   '';
+
+  # Strip libsumo Python bindings as well
+  stripDebugList = [ "bin" "lib" "share/sumo/tools/libsumo" ];
 
   setupHooks = [
     (writeScript "setupHook.sh" ''
