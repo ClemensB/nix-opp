@@ -44,8 +44,10 @@
   withOsg ? true,
   withOsgEarth ? true,
 
+  withOpenMPI ? true,
+
   buildDebug ? true,
-  buildSamples ? true,
+  buildSamples ? false,
 
   installIDE ? true,
   installDoc ? true
@@ -78,13 +80,14 @@ let
       bison
       expat
       flex
-      openmpi
       perl
       python2
       zlib
     ] ++ lib.optionals withQtenv [
       libGL
       qt5
+    ] ++ lib.optionals withOpenMPI [
+      openmpi
     ];
 
     propagatedBuildInputs = lib.optionals withOsg [
@@ -168,8 +171,9 @@ let
       echo "Installing OMNeT++ core..."
 
       mkdir -p "$out/share/omnetpp"
-      cp -r bin include lib images "$out/share/omnetpp"
-      ln -s "$out/share/omnetpp/"{bin,include,lib} "$out/"
+      cp -r bin include lib "$out"
+      cp -r images "$out/share/omnetpp"
+      ln -s "$out/"{bin,include,lib} "$out/share/omnetpp/"
 
       # Remove IDE launchers
       rm "$out/share/omnetpp/bin/"{omnetpp,omnest}
@@ -219,7 +223,15 @@ let
       runHook postInstall
     '';
 
+    dontStrip = true;
+
     preFixup = ''
+      # Manually strip here for two reasons:
+      # - We need to avoid stripping *_dbg libraries
+      # - Strip may fail after using patchelf, see https://github.com/NixOS/nixpkgs/pull/85592
+      echo Stripping binaries...
+      find "$out/bin" "$out/lib" -type f -not -name '*_dbg.so' -exec $STRIP -S {} \;
+
       # Replace the build directory in the RPATH of all executables
       pre_strip_rpath() {
         OLD_RPATH=$(patchelf --print-rpath "$1")
