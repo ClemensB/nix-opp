@@ -9,6 +9,7 @@
   cmake,
   git,
 
+  eigen,
   ffmpeg,
   fontconfig,
   fox_1_6,
@@ -48,6 +49,7 @@ stdenv.mkDerivation rec {
   ];
 
   buildInputs = [
+    eigen
     ffmpeg
     fontconfig # Not checked by configure
     fox_1_6
