@@ -20,6 +20,16 @@
               omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
 
               sumo = callPackage ./pkgs/sumo {};
+              sumo-minimal = final.sumo.override {
+                withEigen = false;
+                withFfmpeg = false;
+                withGDAL = false;
+                withGL2PS = false;
+                withGUI = false;
+                withOSG = false;
+                withProj = false;
+                withSWIG = false;
+              };
 
               example-project = final.omnetpp.buildModel {
                 pname = "example-project";
@@ -75,6 +85,7 @@
             omnetpp
 
             sumo
+            sumo-minimal
 
             inet
             veins
