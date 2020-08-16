@@ -1,69 +1,70 @@
-{
-  lib,
+let pkg =
+  {
+    lib,
 
-  stdenv,
+    stdenv,
 
-  callPackage,
+    callPackage,
 
-  fetchurl,
+    fetchurl,
 
-  makeDesktopItem,
-  makeWrapper,
-  writeScript,
+    makeDesktopItem,
+    makeWrapper,
+    writeScript,
 
-  bison,
-  doxygen,
-  expat,
-  flex,
-  gcc,
-  gdb,
-  glib,
-  gnumake,
-  graphviz,
-  openmpi,
-  perl,
-  python2,
-  zlib,
+    bison,
+    doxygen,
+    expat,
+    flex,
+    gcc,
+    gdb,
+    glib,
+    gnumake,
+    graphviz,
+    openmpi,
+    perl,
+    python2,
+    zlib,
 
-  # OpenSceneGraph support
-  libGL,
-  openscenegraph,
-  osgearth,
+    # OpenSceneGraph support
+    libGL,
+    openscenegraph,
+    osgearth,
 
-  # IDE
-  gtk3-x11,
-  jdk11,
-  webkitgtk,
-  xorg,
+    # IDE
+    gtk3-x11,
+    jdk11,
+    webkitgtk,
+    xorg,
 
-  # Provided by the Qt5 package set
-  env,
-  qtbase,
+    # Provided by the Qt5 package set
+    env,
+    qtbase,
 
-  withQtenv ? true,
-  withOsg ? true,
-  withOsgEarth ? true,
+    withQtenv ? true,
+    withOsg ? true,
+    withOsgEarth ? true,
 
-  withOpenMPI ? true,
+    withOpenMPI ? false,
 
-  buildDebug ? true,
-  buildSamples ? false,
+    buildDebug ? true,
+    buildSamples ? false,
 
-  installIDE ? true,
-  installDoc ? true
-}:
-let
-  # The way OMNeT++ checks for Qt5 requires all files to reside in the same derivation
-  # since it uses qmake to query the include path which returns an incorrect value otherwise.
-  qt5 = env "qt5" [
-    qtbase
-    qtbase.dev
-    qtbase.out
-  ];
+    installIDE ? true,
+    installDoc ? true
+  }@attrs:
+  let
+    # The way OMNeT++ checks for Qt5 requires all files to reside in the same derivation
+    # since it uses qmake to query the include path which returns an incorrect value otherwise.
+    qt5 = env "qt5" [
+      qtbase
+      qtbase.dev
+      qtbase.out
+    ];
 
-  boolToYesNo = b: if b then "yes" else "no";
+    boolToYesNo = b: if b then "yes" else "no";
 
-  self = stdenv.mkDerivation rec {
+  in stdenv.mkDerivation rec {
     name = "omnetpp-${version}";
     version = "5.6.1";
 
@@ -291,8 +292,20 @@ let
       '')
     ];
 
-    passthru = {
-      buildModel = callPackage ./model.nix { omnetpp = self; };
+    passthru = rec {
+      minimal = callPackage pkg (attrs // {
+        buildDebug = false;
+
+        installDoc = false;
+        installIDE = false;
+
+        withQtenv = false;
+        withOsg = false;
+        withOsgEarth = false;
+      });
+
+      buildModel = callPackage ./model.nix { omnetpp = minimal; };
+      runSimulation = callPackage ./simulation.nix { omnetpp = minimal; };
     };
 
     meta = with stdenv.lib; {
@@ -305,4 +318,4 @@ let
       platforms = platforms.all;
     };
   };
-in self
+in pkg
