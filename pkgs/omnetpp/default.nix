@@ -41,6 +41,9 @@ let pkg =
     env,
     qtbase,
 
+    src,
+    version,
+
     withQtenv ? true,
     withOsg ? true,
     withOsgEarth ? true,
@@ -66,12 +69,7 @@ let pkg =
 
   in stdenv.mkDerivation rec {
     name = "omnetpp-${version}";
-    version = "5.6.1";
-
-    src = fetchurl {
-      url = "https://github.com/omnetpp/omnetpp/releases/download/${name}/${name}-src-linux.tgz";
-      sha256 = "1hfb92zlygj12m9vx2s9x4034s3yw9kp26r4zx44k4x6qdhyq5vz";
-    };
+    inherit version src;
 
     nativeBuildInputs = [
       makeWrapper

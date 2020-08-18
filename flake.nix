@@ -17,7 +17,25 @@
             {
               osgearth = callPackage ./pkgs/osgearth {};
 
-              omnetpp = final.libsForQt5.callPackage ./pkgs/omnetpp {};
+              omnetpp561 = final.libsForQt5.callPackage ./pkgs/omnetpp rec {
+                version = "5.6.1";
+
+                src = final.fetchurl {
+                  url = "https://github.com/omnetpp/omnetpp/releases/download/omnetpp-5.6.1/omnetpp-5.6.1-src-linux.tgz";
+                  sha256 = "1hfb92zlygj12m9vx2s9x4034s3yw9kp26r4zx44k4x6qdhyq5vz";
+                };
+              };
+
+              omnetpp562 = final.libsForQt5.callPackage ./pkgs/omnetpp rec {
+                version = "5.6.2";
+
+                src = final.fetchurl {
+                  url = "https://github.com/omnetpp/omnetpp/releases/download/omnetpp-5.6.2/omnetpp-5.6.2-src-linux.tgz";
+                  sha256 = "sha256-l7DWUzmEhtwXK4Qnb4Xv1izQiwKftpnI5QeqDpJ3G2U=";
+                };
+              };
+
+              omnetpp = final.omnetpp562;
 
               sumo = callPackage ./pkgs/sumo {};
               sumo-minimal = final.sumo.override {
@@ -82,7 +100,10 @@
 
         packages.x86_64-linux = {
           inherit (pkgs)
+            omnetpp561
+            omnetpp562
             omnetpp
+
             osgearth
             sumo
             sumo-minimal;
@@ -95,10 +116,17 @@
         };
 
         apps.x86_64-linux = {
-          omnetpp = {
+          omnetpp561 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp.ide}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp561.ide}/bin/omnetpp";
           };
+
+          omnetpp562 = {
+            type = "app";
+            program = "${self.packages.x86_64-linux.omnetpp562.ide}/bin/omnetpp";
+          };
+
+          omnetpp = self.apps.x86_64-linux.omnetpp562;
         };
 
         defaultApp.x86_64-linux = self.apps.x86_64-linux.omnetpp;
