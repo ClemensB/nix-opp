@@ -24,10 +24,12 @@ let pkg =
     openmpi,
     perl,
     python2,
+    python3,
     zlib,
 
     # OpenSceneGraph support
     libGL,
+    libglvnd,
     openscenegraph,
     osgearth,
 
@@ -65,6 +67,50 @@ let pkg =
       qtbase.out
     ];
 
+    oppPythonPackage = python3.pkgs.buildPythonPackage {
+      pname = "omnetpp";
+      inherit version src;
+
+      propagatedBuildInputs = with python3.pkgs; [
+        matplotlib
+        numpy
+        pandas
+        scipy
+      ];
+
+      preConfigure = ''
+        cd python
+
+        # Add missing __init__.py for modules
+        find omnetpp -type d -exec touch {}/__init__.py \;
+
+        # Add setup.py for packaging
+        cat << EOF > setup.py
+        from setuptools import setup, find_packages
+
+        setup(
+          name='omnetpp',
+          version='${version}',
+          packages=find_packages(),
+          install_requires=["matplotlib", "numpy", "pandas", "scipy"],
+        )
+        EOF
+      '';
+    };
+
+    oppPython3 = python3.withPackages (ps: with ps; [
+      matplotlib
+      numpy
+      pandas
+      posix_ipc
+
+      oppPythonPackage
+    ]);
+
+    isPre6 = lib.strings.hasPrefix "5." version;
+
+    python = (if isPre6 then python2 else oppPython3);
+
     boolToYesNo = b: if b then "yes" else "no";
 
   in stdenv.mkDerivation rec {
@@ -80,7 +126,7 @@ let pkg =
       expat
       flex
       perl
-      python2
+      python
       zlib
     ] ++ lib.optionals withQtenv [
       libGL
@@ -181,6 +227,30 @@ let pkg =
       substitute Makefile.inc "$out/share/omnetpp/Makefile.inc" \
         --replace '$(abspath $(dir $(lastword $(MAKEFILE_LIST))))' "$out"
 
+      # Amend Makefile.inc to make builds work by default even outside a Nix shell
+      cat << EOF >> $out/share/omnetpp/Makefile.inc
+      CFLAGS += -fPIC
+      EOF
+
+    '' + lib.optionalString (withOsg && false) /* Disable due to closure size */ ''
+      cat << EOF >> $out/share/omnetpp/Makefile.inc
+      CFLAGS += \
+        -I${libglvnd.dev}/include \
+        -I${openscenegraph}/include \
+      LDFLAGS += \
+        -L${openscenegraph}/lib \
+      EOF
+    '' + ''
+
+    '' + lib.optionalString (withOsgEarth && false) /* Disable due to closure size */ ''
+      cat << EOF >> $out/share/omnetpp/Makefile.inc
+      CFLAGS += \
+        -I${osgearth}/include
+      LDFLAGS += \
+        -L${osgearth}/lib
+      EOF
+    '' + ''
+
       # Create new opp_configfilepath script pointing to Makefile.inc in $out
       echo "#!$SHELL" > "$out/bin/opp_configfilepath"
       echo "echo '$out/share/omnetpp/Makefile.inc'" >> "$out/bin/opp_configfilepath"
@@ -204,6 +274,11 @@ let pkg =
         cp -r "${desktopItem}/share/applications" "$ide/share/"
         mkdir "$ide/share/icons"
         ln -s "$ide/share/omnetpp/ide/icon.png" "$ide/share/icons/omnetpp.png"
+
+        # Remove JRE if included
+        if [ -e $ide/share/omnetpp/ide/jre ]; then
+          rm -r $ide/share/omnetpp/ide/jre
+        fi
       fi
 
       if ! [ -z ''${samples+x} ]; then
@@ -238,21 +313,30 @@ let pkg =
         patchelf --set-rpath "$NEW_RPATH" "$1"
       }
       export -f pre_strip_rpath
+
+      echo "Fixing up RPATHs in $out..."
       find "$out" -type f -executable -exec $SHELL -c 'pre_strip_rpath "$0"' {} \;
 
       if ! [ -z ''${samples+x} ];  then
+        echo "Fixing up RPATHs in $samples.."
         find "$samples" -type f -executable -exec $SHELL -c 'pre_strip_rpath "$0"' {} \;
       fi
 
       if ! [ -z ''${ide+x} ];  then
+        ide_bin="$ide/share/omnetpp/ide/${if isPre6 then "omnetpp" else "opp_ide"}"
+
         # Patch IDE binary
+        echo "Patching IDE launcher interpreter..."
         interpreter=$(echo ${stdenv.glibc.out}/lib/ld-linux*.so.2)
-        patchelf --set-interpreter $interpreter $ide/share/omnetpp/ide/omnetpp
+        patchelf --set-interpreter "$interpreter" "$ide_bin"
 
         # Create wrapper for IDE
-        makeWrapper "$ide/share/omnetpp/ide/omnetpp" "$ide/bin/omnetpp" \
-          --prefix LD_LIBRARY_PATH : ${lib.makeLibraryPath [ glib gtk3-x11 webkitgtk xorg.libXtst ]} \
-          --prefix PATH : "${jdk11}/bin:$out/bin:${graphviz}/bin:${doxygen}/bin:${gdb}/bin"
+        echo "Generating IDE launch wrapper..."
+        makeWrapper "$ide_bin" "$ide/bin/omnetpp" \
+          --set OMNETPP_ROOT "$out/share/omnetpp" \
+          --set OMNETPP_CONFIGFILE "$out/share/omnetpp/Makefile.inc" \
+          --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ glib gtk3-x11 webkitgtk xorg.libXtst ]}" \
+          --prefix PATH : "${lib.makeBinPath ([ jdk11 gnumake graphviz doxygen gcc gdb ] ++ lib.optional (!isPre6) python)}"
       fi
     '';
 
@@ -293,6 +377,7 @@ let pkg =
     passthru = rec {
       minimal = callPackage pkg (attrs // {
         buildDebug = false;
+        buildSamples = false;
 
         installDoc = false;
         installIDE = false;
@@ -304,6 +389,8 @@ let pkg =
 
       buildModel = callPackage ./model.nix { omnetpp = minimal; };
       runSimulation = callPackage ./simulation.nix { omnetpp = minimal; };
+    } // lib.optionalAttrs (!isPre6)  {
+      pythonPackage = oppPythonPackage;
     };
 
     meta = with stdenv.lib; {

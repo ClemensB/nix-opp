@@ -35,6 +35,15 @@
                 };
               };
 
+              omnetpp60pre8 = final.libsForQt5.callPackage ./pkgs/omnetpp rec {
+                version = "6.0pre8";
+
+                src = final.fetchurl {
+                  url = "https://github.com/omnetpp/omnetpp/releases/download/omnetpp-6.0pre8/omnetpp-6.0pre8-src-linux.tgz";
+                  sha256 = "09np7gxgyy81v7ld14yv2738laj67966q7d7r4ybrkz01axg1ik5";
+                };
+              };
+
               omnetpp = final.omnetpp562;
 
               sumo = callPackage ./pkgs/sumo {};
@@ -102,6 +111,7 @@
           inherit (pkgs)
             omnetpp561
             omnetpp562
+            omnetpp60pre8
             omnetpp
 
             osgearth
@@ -124,6 +134,11 @@
           omnetpp562 = {
             type = "app";
             program = "${self.packages.x86_64-linux.omnetpp562.ide}/bin/omnetpp";
+          };
+
+          omnetpp60pre8 = {
+            type = "app";
+            program = "${self.packages.x86_64-linux.omnetpp60pre8.ide}/bin/omnetpp";
           };
 
           omnetpp = self.apps.x86_64-linux.omnetpp562;
