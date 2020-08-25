@@ -96,10 +96,10 @@
                   pname = "veins_inet";
                   version = "4.0-git";
 
-                  src = final.veins.src;
+                  src = final.omnetppModels.veins.src;
                   sourceRoot = "source/subprojects/veins_inet";
 
-                  buildInputs = with final; [
+                  buildInputs = with final.omnetppModels; [
                     inet
                     veins
                   ];
