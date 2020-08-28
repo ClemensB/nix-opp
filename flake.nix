@@ -8,6 +8,8 @@
   outputs = { self, nixpkgs }:
     let
       pkgs = import nixpkgs { system = "x86_64-linux"; overlays = [ self.overlay ]; };
+
+      fix = f: let x = f x; in x;
     in
       {
         overlay = final: prev:
@@ -58,7 +60,7 @@
                 withSWIG = false;
               };
 
-              omnetppModels = final.lib.makeOverridable ({ omnetpp }: {
+              omnetppModels = final.lib.makeOverridable ({ omnetpp }: fix (self: {
                 example-project = omnetpp.buildModel {
                   pname = "example-project";
                   version = "0.0.1";
@@ -99,12 +101,12 @@
                   src = final.omnetppModels.veins.src;
                   sourceRoot = "source/subprojects/veins_inet";
 
-                  buildInputs = with final.omnetppModels; [
+                  propagatedBuildInputs = with self; [
                     inet
                     veins
                   ];
                 };
-              }) { omnetpp = final.omnetpp; };
+              })) { omnetpp = final.omnetpp; };
             };
 
         packages.x86_64-linux = {
