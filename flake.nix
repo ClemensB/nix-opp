@@ -87,10 +87,10 @@
                   version = "5.0-git";
 
                   src = final.fetchFromGitHub {
-                    owner = "ClemensB";
+                    owner = "sommer";
                     repo = "veins";
-                    rev = "e9fcb936f17f9938be8d8f46be2d086f05744bf8";
-                    sha256 = "sha256-pAJ9IiKry+uwVz3UizzJ2fzhmucU7b2Gm/RtdvHc4oI=";
+                    rev = "a367f827a1348471efa42ae0c95983ff0027453d";
+                    sha256 = "sha256-R1qfldxeMVZmjZyJb51kWqyN7Wa+Znt5Az0Wj5ucbSQ=";
                   };
                 };
 
@@ -98,7 +98,7 @@
                   pname = "veins_inet";
                   version = "4.0-git";
 
-                  src = final.omnetppModels.veins.src;
+                  src = self.veins.src;
                   sourceRoot = "source/subprojects/veins_inet";
 
                   propagatedBuildInputs = with self; [
