@@ -33,7 +33,9 @@ stdenv.mkDerivation {
     export NEDPATH="$NEDPATH"
     export OMNETPP_IMAGE_PATH="$NEDPATH"
 
+    '' + (lib.optionalString ((builtins.length runtimeDeps) > 0) ''
     export PATH="\''${PATH:+\''${PATH}:}${lib.makeBinPath runtimeDeps}"
+    '') + ''
 
     '' + (lib.optionalString (changeDir != null) ''
     cd "${changeDir}"
