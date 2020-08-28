@@ -38,6 +38,8 @@ stdenv.mkDerivation (attrs // {
   configurePhase = ''
     runHook preConfigure
 
+    IFS=':' read -a nix_omnetpp_libs <<< "$NIX_OMNETPP_LIBS"
+
     if [ -f .project ]; then
       project_name="''${PWD##*/}"
 
@@ -210,6 +212,7 @@ stdenv.mkDerivation (attrs // {
 
     echo "Configuration summary:"
     echo "- Exported include directories: ''${include[@]}"
+    echo "- Imported libraries: ''${nix_omnetpp_libs[@]}"
     echo "- Exported libraries: ''${libs[@]}"
     echo "- Binaries: ''${bins[@]}"
     echo "- NED folders: ''${nedfolders[@]}"
@@ -239,6 +242,17 @@ stdenv.mkDerivation (attrs // {
     done
 
     for lib in "''${libs[@]}"; do
+      # Add references to imported libraries
+      for imported_lib in "''${nix_omnetpp_libs[@]}"; do
+        echo "Adding reference from $lib to $imported_lib"
+        patchelf --add-needed "''${imported_lib##*/}" "$lib"
+
+        orig_rpath="$(patchelf --print-rpath "$lib")"
+        new_rpath="''${orig_rpath:+''${orig_rpath}:}''${imported_lib%/*}"
+        echo "Setting RPATH of $lib to $new_rpath"
+        patchelf --set-rpath "$new_rpath" "$lib"
+      done
+
       mkdir -p "$out/lib"
       cp $lib "$out/lib"
     done
