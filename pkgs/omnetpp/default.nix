@@ -218,6 +218,7 @@ let pkg =
       mkdir -p "$out/share/omnetpp"
       cp -r bin include lib "$out"
       cp -r images "$out/share/omnetpp"
+      cp -r misc "$out/share/omnetpp"
       ln -s "$out/"{bin,include,lib} "$out/share/omnetpp/"
 
       # Remove IDE launchers
