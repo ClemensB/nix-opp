@@ -35,6 +35,9 @@ stdenv.mkDerivation (attrs // {
     omnetpp
   ];
 
+  # We strip manually
+  dontStrip = true;
+
   configurePhase = ''
     runHook preConfigure
 
@@ -242,6 +245,10 @@ stdenv.mkDerivation (attrs // {
     done
 
     for lib in "''${libs[@]}"; do
+      # Strip may fail after using patchelf, so strip manually here
+      echo Stripping binaries...
+      $STRIP -S "$lib"
+
       # Add references to imported libraries
       for imported_lib in "''${nix_omnetpp_libs[@]}"; do
         echo "Adding reference from $lib to $imported_lib"
