@@ -391,7 +391,7 @@ let pkg =
       makeRunwrapper = callPackage ./runwrapper.nix { omnetpp = minimal; };
       buildModel = callPackage ./model.nix { omnetpp = minimal; };
       runSimulation = callPackage ./simulation.nix { omnetpp = minimal; };
-      packSimulation = callPackage ./pack-simulation.nix {};
+      packSimulation = callPackage ./pack-simulation.nix { omnetpp = minimal; };
     } // lib.optionalAttrs (!isPre6)  {
       pythonPackage = oppPythonPackage;
     };
