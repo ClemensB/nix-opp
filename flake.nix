@@ -8,8 +8,6 @@
   outputs = { self, nixpkgs }:
     let
       pkgs = import nixpkgs { system = "x86_64-linux"; overlays = [ self.overlay ]; };
-
-      fix = f: let x = f x; in x;
     in
       {
         overlay = final: prev:
@@ -27,6 +25,7 @@
                   sha256 = "1hfb92zlygj12m9vx2s9x4034s3yw9kp26r4zx44k4x6qdhyq5vz";
                 };
               };
+              omnetpp561Full = final.omnetpp561.full;
 
               omnetpp562 = final.libsForQt5.callPackage ./pkgs/omnetpp rec {
                 version = "5.6.2";
@@ -36,6 +35,7 @@
                   sha256 = "sha256-l7DWUzmEhtwXK4Qnb4Xv1izQiwKftpnI5QeqDpJ3G2U=";
                 };
               };
+              omnetpp562Full = final.omnetpp562.full;
 
               omnetpp60pre8 = final.libsForQt5.callPackage ./pkgs/omnetpp rec {
                 version = "6.0pre8";
@@ -45,8 +45,12 @@
                   sha256 = "09np7gxgyy81v7ld14yv2738laj67966q7d7r4ybrkz01axg1ik5";
                 };
               };
+              omnetpp60pre8Full = final.omnetpp60pre8.full;
 
               omnetpp = final.omnetpp562;
+              omnetppFull = final.omnetpp.full;
+
+              omnetppModels = final.omnetpp.models;
 
               sumo = callPackage ./pkgs/sumo {};
               sumo-minimal = final.sumo.override {
@@ -59,88 +63,49 @@
                 withProj = false;
                 withSWIG = false;
               };
-
-              omnetppModels = final.lib.makeOverridable ({ omnetpp }: fix (self: {
-                example-project = omnetpp.buildModel {
-                  pname = "example-project";
-                  version = "0.0.1";
-
-                  src = "${self}/example-project";
-                };
-
-                inet = omnetpp.buildModel {
-                  pname = "inet";
-                  version = "4.2.0";
-
-                  src = final.fetchFromGitHub {
-                    owner = "inet-framework";
-                    repo = "inet";
-                    rev = "cb6c37b3dcb76b0cecf584e87e777d965bf1ca6c";
-                    sha256 = "sha256-oxCz5Dwx5/NeINPAaXmx6Ie/gcMLu9pmVb2A35e0C6s=";
-                  };
-
-                  extraIncludeDirs = [ "src" ];
-                };
-
-                veins = omnetpp.buildModel {
-                  pname = "veins";
-                  version = "5.0-git";
-
-                  src = final.fetchFromGitHub {
-                    owner = "sommer";
-                    repo = "veins";
-                    rev = "a367f827a1348471efa42ae0c95983ff0027453d";
-                    sha256 = "sha256-R1qfldxeMVZmjZyJb51kWqyN7Wa+Znt5Az0Wj5ucbSQ=";
-                  };
-                };
-
-                veins_inet = omnetpp.buildModel {
-                  pname = "veins_inet";
-                  version = "4.0-git";
-
-                  src = self.veins.src;
-                  sourceRoot = "source/subprojects/veins_inet";
-
-                  propagatedBuildInputs = with self; [
-                    inet
-                    veins
-                  ];
-                };
-              })) { omnetpp = final.omnetpp; };
             };
 
         packages.x86_64-linux = {
           inherit (pkgs)
-            omnetpp561
-            omnetpp562
-            omnetpp60pre8
-            omnetpp
-
             osgearth
+
+            omnetpp
+            omnetppFull
+            omnetpp561
+            omnetpp561Full
+            omnetpp562
+            omnetpp562Full
+            omnetpp60pre8
+            omnetpp60pre8Full
+
             sumo
             sumo-minimal;
 
           inherit (pkgs.omnetppModels)
-            example-project
+            #example-project
             inet
+            inet411
+            inet412
+            inet420
+
             veins
-            veins_inet;
+            veins50;
         };
 
         apps.x86_64-linux = {
           omnetpp561 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp561.ide}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp561.full.ide}/bin/omnetpp";
           };
 
           omnetpp562 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp562.ide}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp562.full.ide}/bin/omnetpp";
           };
 
           omnetpp60pre8 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp60pre8.ide}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp60pre8.full.ide}/bin/omnetpp";
           };
 
           omnetpp = self.apps.x86_64-linux.omnetpp562;
