@@ -1,8 +1,8 @@
 {
-  description = "A Nix flake for the OMNeT++ ecosystem";
+  description = "A Nix flake with packages related to OMNeT++";
 
   inputs = {
-    nixpkgs.url = github:NixOS/nixpkgs/nixos-20.03;
+    nixpkgs.url = github:NixOS/nixpkgs;
   };
 
   outputs = { self, nixpkgs }:
@@ -17,34 +17,13 @@
             {
               osgearth = callPackage ./pkgs/osgearth {};
 
-              omnetpp561 = final.libsForQt5.callPackage ./pkgs/omnetpp rec {
-                version = "5.6.1";
-
-                src = final.fetchurl {
-                  url = "https://github.com/omnetpp/omnetpp/releases/download/omnetpp-5.6.1/omnetpp-5.6.1-src-linux.tgz";
-                  sha256 = "1hfb92zlygj12m9vx2s9x4034s3yw9kp26r4zx44k4x6qdhyq5vz";
-                };
-              };
+              omnetpp561 = final.libsForQt5.callPackage ./pkgs/omnetpp/5.6.1.nix {};
               omnetpp561Full = final.omnetpp561.full;
 
-              omnetpp562 = final.libsForQt5.callPackage ./pkgs/omnetpp rec {
-                version = "5.6.2";
-
-                src = final.fetchurl {
-                  url = "https://github.com/omnetpp/omnetpp/releases/download/omnetpp-5.6.2/omnetpp-5.6.2-src-linux.tgz";
-                  sha256 = "sha256-l7DWUzmEhtwXK4Qnb4Xv1izQiwKftpnI5QeqDpJ3G2U=";
-                };
-              };
+              omnetpp562 = final.libsForQt5.callPackage ./pkgs/omnetpp/5.6.2.nix {};
               omnetpp562Full = final.omnetpp562.full;
 
-              omnetpp60pre8 = final.libsForQt5.callPackage ./pkgs/omnetpp rec {
-                version = "6.0pre8";
-
-                src = final.fetchurl {
-                  url = "https://github.com/omnetpp/omnetpp/releases/download/omnetpp-6.0pre8/omnetpp-6.0pre8-src-linux.tgz";
-                  sha256 = "09np7gxgyy81v7ld14yv2738laj67966q7d7r4ybrkz01axg1ik5";
-                };
-              };
+              omnetpp60pre8 = final.libsForQt5.callPackage ./pkgs/omnetpp/6.0pre8.nix {};
               omnetpp60pre8Full = final.omnetpp60pre8.full;
 
               omnetpp = final.omnetpp562;

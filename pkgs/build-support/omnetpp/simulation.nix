@@ -5,7 +5,7 @@
   runCommand,
   singularity-tools,
 
-  omnetpp
+  mkOmnetppRunwrapper
 }:
 
 {
@@ -33,7 +33,7 @@ let
     '';
 
     passthru = {
-      runwrapper = omnetpp.makeRunwrapper {
+      runwrapper = mkOmnetppRunwrapper {
         buildInputs = [ self ] ++ propagatedBuildInputs;
         changeDir = self;
       };

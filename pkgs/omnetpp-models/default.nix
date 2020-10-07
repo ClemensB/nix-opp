@@ -28,7 +28,9 @@ let
           else ff;
     in
       {
-        buildOmnetppModel = makeOverridableOmnetppModel (makeOverridable (callPackage ../omnetpp/model.nix {}));
+        buildOmnetppModel = makeOverridableOmnetppModel (makeOverridable (callPackage ../build-support/omnetpp/model.nix {}));
+        mkOmnetppRunwrapper = callPackage ../build-support/omnetpp/runwrapper.nix {};
+        mkOmnetppSimulation = callPackage ../build-support/omnetpp/simulation.nix {};
 
         veins = self.veins50;
         veins50 = callPackage ./veins/5.0.nix { inet = self.inet411; };

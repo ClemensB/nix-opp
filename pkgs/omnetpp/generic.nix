@@ -1,5 +1,10 @@
-let pkg =
-  {
+{
+  version,
+  sha256
+}:
+
+let
+  pkg = {
     lib,
 
     stdenv,
@@ -43,9 +48,6 @@ let pkg =
     env,
     qtbase,
 
-    src,
-    version,
-
     withQtenv ? false,
     withOsg ? false,
     withOsgEarth ? false,
@@ -59,6 +61,11 @@ let pkg =
     installDoc ? false
   }@attrs:
   let
+    src = fetchurl {
+      url = "https://github.com/omnetpp/omnetpp/releases/download/omnetpp-${version}/omnetpp-${version}-src-linux.tgz";
+      inherit sha256;
+    };
+
     # The way OMNeT++ checks for Qt5 requires all files to reside in the same derivation
     # since it uses qmake to query the include path which returns an incorrect value otherwise.
     qt5 = env "qt5" [
@@ -405,11 +412,6 @@ let pkg =
         models = callPackage ../omnetpp-models {
           omnetpp = self;
         };
-
-        makeRunwrapper = callPackage ./runwrapper.nix { omnetpp = minimal; };
-        buildModel = callPackage ./model.nix { omnetpp = minimal; };
-        runSimulation = callPackage ./simulation.nix { omnetpp = minimal; };
-        packSimulation = callPackage ./pack-simulation.nix { omnetpp = minimal; };
       } // lib.optionalAttrs (!isPre6)  {
         pythonPackage = oppPythonPackage;
       };
