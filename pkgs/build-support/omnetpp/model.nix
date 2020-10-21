@@ -32,7 +32,7 @@ stdenv.mkDerivation (attrs // {
   ];
 
   buildInputs = buildInputs ++ [
-    omnetpp
+    omnetpp.minimal
   ];
 
   # We strip manually

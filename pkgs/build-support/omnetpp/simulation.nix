@@ -33,13 +33,19 @@ let
     '';
 
     passthru = {
-      runwrapper = mkOmnetppRunwrapper {
+      run = mkOmnetppRunwrapper {
         buildInputs = [ self ] ++ propagatedBuildInputs;
         changeDir = self;
       };
 
+      runWithGUI = mkOmnetppRunwrapper {
+        buildInputs = [ self ] ++ propagatedBuildInputs;
+        changeDir = self;
+        withGUI = true;
+      };
+
       results = runCommand "${name}-results" {} ''
-        ${self.runwrapper} --result-dir="$out"
+        ${self.run} --result-dir="$out"
       '';
 
       singularity = singularity-tools.buildImage {

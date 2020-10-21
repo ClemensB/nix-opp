@@ -11,51 +11,37 @@
     in
       {
         overlay = final: prev:
-          let
-            callPackage = nixpkgs.lib.callPackageWith final;
-          in
-            {
-              osgearth = callPackage ./pkgs/osgearth {};
+          {
+            osgearth = final.callPackage ./pkgs/osgearth {};
 
-              omnetpp561 = final.libsForQt5.callPackage ./pkgs/omnetpp/5.6.1.nix {};
-              omnetpp561Full = final.omnetpp561.full;
+            omnetpp561 = final.libsForQt5.callPackage ./pkgs/omnetpp/5.6.1.nix {};
+            omnetpp562 = final.libsForQt5.callPackage ./pkgs/omnetpp/5.6.2.nix {};
+            omnetpp60pre8 = final.libsForQt5.callPackage ./pkgs/omnetpp/6.0pre8.nix {};
 
-              omnetpp562 = final.libsForQt5.callPackage ./pkgs/omnetpp/5.6.2.nix {};
-              omnetpp562Full = final.omnetpp562.full;
+            omnetpp = final.omnetpp562;
+            omnetppModels = final.omnetpp.models;
 
-              omnetpp60pre8 = final.libsForQt5.callPackage ./pkgs/omnetpp/6.0pre8.nix {};
-              omnetpp60pre8Full = final.omnetpp60pre8.full;
-
-              omnetpp = final.omnetpp562;
-              omnetppFull = final.omnetpp.full;
-
-              omnetppModels = final.omnetpp.models;
-
-              sumo = callPackage ./pkgs/sumo {};
-              sumo-minimal = final.sumo.override {
-                withEigen = false;
-                withFfmpeg = false;
-                withGDAL = false;
-                withGL2PS = false;
-                withGUI = false;
-                withOSG = false;
-                withProj = false;
-                withSWIG = false;
-              };
+            sumo = final.callPackage ./pkgs/sumo {};
+            sumo-minimal = final.sumo.override {
+              withEigen = false;
+              withFfmpeg = false;
+              withGDAL = false;
+              withGL2PS = false;
+              withGUI = false;
+              withOSG = false;
+              withProj = false;
+              withSWIG = false;
             };
+          };
 
         packages.x86_64-linux = {
           inherit (pkgs)
             osgearth
 
             omnetpp
-            omnetppFull
             omnetpp561
-            omnetpp561Full
             omnetpp562
-            omnetpp562Full
             omnetpp60pre8
-            omnetpp60pre8Full
 
             sumo
             sumo-minimal;
@@ -74,17 +60,17 @@
         apps.x86_64-linux = {
           omnetpp561 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp561.full.ide}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp561.full}/bin/omnetpp";
           };
 
           omnetpp562 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp562.full.ide}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp562.full}/bin/omnetpp";
           };
 
           omnetpp60pre8 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp60pre8.full.ide}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp60pre8.full}/bin/omnetpp";
           };
 
           omnetpp = self.apps.x86_64-linux.omnetpp562;

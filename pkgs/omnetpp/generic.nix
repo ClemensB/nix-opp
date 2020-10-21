@@ -48,17 +48,17 @@ let
     env,
     qtbase,
 
-    withQtenv ? false,
-    withOsg ? false,
-    withOsgEarth ? false,
+    withQtenv ? true,
+    withOsg ? true,
+    withOsgEarth ? true,
 
     withOpenMPI ? false,
 
-    buildDebug ? false,
+    buildDebug ? true,
     buildSamples ? false,
 
-    installIDE ? false,
-    installDoc ? false
+    installIDE ? true,
+    installDoc ? true
   }@attrs:
   let
     src = fetchurl {
@@ -151,7 +151,6 @@ let
 
       outputs = [ "out" ]
         ++ lib.optional installDoc "doc"
-        ++ lib.optional installIDE "ide"
         ++ lib.optional buildSamples "samples";
 
       postPatch = ''
@@ -274,18 +273,17 @@ let
           cp -r doc "$doc/share/omnetpp/"
         fi
 
-        if ! [ -z ''${ide+x} ]; then
+        if [ "${lib.boolToString installIDE}" == "true" ]; then
           echo "Installing IDE..."
 
-          mkdir -p "$ide/share/omnetpp"
-          cp -r ide "$ide/share/omnetpp/"
-          cp -r "${desktopItem}/share/applications" "$ide/share/"
-          mkdir "$ide/share/icons"
-          ln -s "$ide/share/omnetpp/ide/icon.png" "$ide/share/icons/omnetpp.png"
+          cp -r ide "$out/share/omnetpp/"
+          cp -r "${desktopItem}/share/applications" "$out/share/"
+          mkdir "$out/share/icons"
+          ln -s "$out/share/omnetpp/ide/icon.png" "$out/share/icons/omnetpp.png"
 
           # Remove JRE if included
-          if [ -e $ide/share/omnetpp/ide/jre ]; then
-            rm -r $ide/share/omnetpp/ide/jre
+          if [ -e $out/share/omnetpp/ide/jre ]; then
+            rm -r $out/share/omnetpp/ide/jre
           fi
         fi
 
@@ -330,8 +328,8 @@ let
           find "$samples" -type f -executable -exec $SHELL -c 'pre_strip_rpath "$0"' {} \;
         fi
 
-        if ! [ -z ''${ide+x} ];  then
-          ide_bin="$ide/share/omnetpp/ide/${if isPre6 then "omnetpp" else "opp_ide"}"
+        if [ "${lib.boolToString installIDE}" == "true" ]; then
+          ide_bin="$out/share/omnetpp/ide/${if isPre6 then "omnetpp" else "opp_ide"}"
 
           # Patch IDE binary
           echo "Patching IDE launcher interpreter..."
@@ -340,7 +338,7 @@ let
 
           # Create wrapper for IDE
           echo "Generating IDE launch wrapper..."
-          makeWrapper "$ide_bin" "$ide/bin/omnetpp" \
+          makeWrapper "$ide_bin" "$out/bin/omnetpp" \
             --set OMNETPP_ROOT "$out/share/omnetpp" \
             --set OMNETPP_CONFIGFILE "$out/share/omnetpp/Makefile.inc" \
             --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ glib gtk3-x11 webkitgtk xorg.libXtst ]}" \
@@ -383,28 +381,24 @@ let
       ];
 
       passthru = rec {
-        minimal = callPackage pkg (attrs // {
-          buildDebug = false;
-          buildSamples = false;
-
-          installDoc = false;
+        core = callPackage pkg (attrs // {
           installIDE = false;
+        });
+
+        minimal = callPackage pkg (attrs // {
+          installIDE = false;
+          buildDebug = false;
 
           withQtenv = false;
           withOsg = false;
           withOsgEarth = false;
         });
 
-        full = callPackage pkg (attrs // {
-          buildDebug = true;
-
-          installDoc = true;
-          installIDE = true;
+        minimal-gui = callPackage pkg (attrs // {
+          installIDE = false;
+          buildDebug = false;
 
           withQtenv = true;
-
-          withOpenMPI = true;
-
           withOsg = true;
           withOsgEarth = true;
         });
