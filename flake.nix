@@ -60,17 +60,17 @@
         apps.x86_64-linux = {
           omnetpp561 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp561.full}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp561.ide}/bin/omnetpp";
           };
 
           omnetpp562 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp562.full}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp562.ide}/bin/omnetpp";
           };
 
           omnetpp60pre8 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp60pre8.full}/bin/omnetpp";
+            program = "${self.packages.x86_64-linux.omnetpp60pre8.ide}/bin/omnetpp";
           };
 
           omnetpp = self.apps.x86_64-linux.omnetpp562;

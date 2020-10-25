@@ -15,6 +15,7 @@ let
 
     makeDesktopItem,
     makeWrapper,
+    nukeReferences,
     writeScript,
 
     bison,
@@ -24,6 +25,7 @@ let
     gcc,
     gdb,
     glib,
+    glibc,
     gnumake,
     graphviz,
     openmpi,
@@ -55,12 +57,15 @@ let
     withOpenMPI ? false,
 
     buildDebug ? true,
-    buildSamples ? false,
+    buildSamples ? true,
 
     installIDE ? true,
-    installDoc ? true
+    installDoc ? true,
+    installSamples ? true
   }@attrs:
   let
+    inherit (lib) boolToString;
+
     src = fetchurl {
       url = "https://github.com/omnetpp/omnetpp/releases/download/omnetpp-${version}/omnetpp-${version}-src-linux.tgz";
       inherit sha256;
@@ -124,8 +129,13 @@ let
       name = "omnetpp-${version}";
       inherit version src;
 
+      patches = [
+        ./0001-Set-QT_QPA_PLATFORM_PLUGIN_PATH.patch
+      ];
+
       nativeBuildInputs = [
         makeWrapper
+        nukeReferences
       ];
 
       buildInputs = [
@@ -149,9 +159,10 @@ let
         osgearth
       ];
 
-      outputs = [ "out" ]
+      outputs = [ "bin" "dev" "run" "full" "out" ]
         ++ lib.optional installDoc "doc"
-        ++ lib.optional buildSamples "samples";
+        ++ lib.optional installIDE "ide"
+        ++ lib.optional installSamples "samples";
 
       postPatch = ''
         # Don't write to $HOME
@@ -166,6 +177,13 @@ let
         # Make hardcoded default image path point to $out instead of /build
         substituteInPlace src/envir/envirbase.cc \
           --replace 'OMNETPP_IMAGE_PATH)' "\"$out/share/omnetpp/images\")"
+
+        # Help Qt find its plugins
+        # Since users are building binaries on their own, we cannot rely on wrappers for this
+        if ${boolToString withQtenv}; then
+          substituteInPlace src/qtenv/qtenv.cc \
+            --subst-var-by QT_QPA_PLATFORM_PLUGIN_PATH "${qtbase}/lib/qt-${qtbase.version}/plugins"
+        fi
       '';
 
       preConfigure = ''
@@ -185,15 +203,13 @@ let
         EOF
       '';
 
-      inherit buildDebug;
-
       preBuild = lib.optionalString buildDebug ''
-        # Make sure debug information points to $out instead of /build
-        export NIX_CFLAGS_COMPILE="-fdebug-prefix-map=/build/$name/src=$out/share/omnetpp/src $NIX_CFLAGS_COMPILE"
+        # Make sure debug information points to $dev instead of /build
+        export NIX_CFLAGS_COMPILE="-fdebug-prefix-map=/build/$name/src=$dev/share/omnetpp/src $NIX_CFLAGS_COMPILE"
       '';
 
       enableParallelBuilding = true;
-      buildModes = [ "release" ] ++ lib.optional buildDebug "debug";
+      buildModes = lib.optional buildDebug "debug" ++ [ "release" ];
       buildTargets = [ "base" ] ++ lib.optional buildSamples "samples";
 
       buildPhase = ''
@@ -221,36 +237,57 @@ let
 
         echo "Installing OMNeT++ core..."
 
-        mkdir -p "$out/share/omnetpp"
-        cp -r bin include lib "$out"
+        mkdir -p \
+          "$out/share/omnetpp" \
+          "$dev/share/omnetpp" \
+          "$dev/bin" \
+          "''${!outputBin}" \
+          "''${!outputInclude}" \
+          "''${!outputLib}"
+
+        cp -r bin "''${!outputBin}/bin"
+        cp -r include "''${!outputInclude}/include"
+        cp -r lib "''${!outputLib}/lib"
         cp -r images "$out/share/omnetpp"
-        cp -r misc "$out/share/omnetpp"
-        ln -s "$out/"{bin,include,lib} "$out/share/omnetpp/"
+
+        mkdir -p "$run/bin"
+        mv "''${!outputBin}/bin/opp_run" "$run/bin"
+        ln -s "$run/bin/opp_run" "''${!outputBin}/bin/"
 
         # Remove IDE launchers
-        rm "$out/share/omnetpp/bin/"{omnetpp,omnest}
+        rm "''${!outputBin}/bin/"{omnetpp,omnest}
 
         # Hardcode OMNeT++ path in installed Makefile.inc
-        substitute Makefile.inc "$out/share/omnetpp/Makefile.inc" \
-          --replace '$(abspath $(dir $(lastword $(MAKEFILE_LIST))))' "$out"
+        substitute Makefile.inc "$dev/share/omnetpp/Makefile.inc" \
+          --replace '$(abspath $(dir $(lastword $(MAKEFILE_LIST))))' "$out/share/omnetpp" \
+          --replace '$(OMNETPP_ROOT)/include' "$dev/include" \
+          --replace '$(OMNETPP_ROOT)/lib' "''${!outputLib}/lib" \
+          --replace '$(OMNETPP_ROOT)/bin' "$bin/bin" \
+          --replace '$(OMNETPP_ROOT)/src' "$dev/src"
+
+        cat << EOF >> $dev/share/omnetpp/Makefile.inc
+        ifeq (\$(MODE),debug)
+          OMNETPP_LIB_DIR = "$dev/lib"
+        endif
+        EOF
 
         # Amend Makefile.inc to make builds work by default even outside a Nix shell
-        cat << EOF >> $out/share/omnetpp/Makefile.inc
+        cat << EOF >> $dev/share/omnetpp/Makefile.inc
         CFLAGS += -fPIC
         EOF
 
-      '' + lib.optionalString (withOsg && false) /* Disable due to closure size */ ''
-        cat << EOF >> $out/share/omnetpp/Makefile.inc
+      '' + lib.optionalString withOsg ''
+        cat << EOF >> $dev/share/omnetpp/Makefile.inc
         CFLAGS += \
           -I${libglvnd.dev}/include \
-          -I${openscenegraph}/include \
+          -I${openscenegraph}/include
         LDFLAGS += \
-          -L${openscenegraph}/lib \
+          -L${openscenegraph}/lib
         EOF
       '' + ''
 
-      '' + lib.optionalString (withOsgEarth && false) /* Disable due to closure size */ ''
-        cat << EOF >> $out/share/omnetpp/Makefile.inc
+      '' + lib.optionalString withOsgEarth ''
+        cat << EOF >> $dev/share/omnetpp/Makefile.inc
         CFLAGS += \
           -I${osgearth}/include
         LDFLAGS += \
@@ -258,36 +295,48 @@ let
         EOF
       '' + ''
 
-        # Create new opp_configfilepath script pointing to Makefile.inc in $out
-        echo "#!$SHELL" > "$out/bin/opp_configfilepath"
-        echo "echo '$out/share/omnetpp/Makefile.inc'" >> "$out/bin/opp_configfilepath"
+        # Create new opp_configfilepath script pointing to Makefile.inc in $dev
+        echo "#!$SHELL" > "''${!outputBin}/bin/opp_configfilepath"
+        echo "echo '$dev/share/omnetpp/Makefile.inc'" >> "''${!outputBin}/bin/opp_configfilepath"
 
-        if [ "$buildDebug" == "1" ]; then
-          cp -r src "$out/share/omnetpp"
+        # Move development binaries
+        mv "''${!outputBin}/bin/"{opp_configfilepath,opp_makemake} "$dev/bin/"
+
+        if ${boolToString buildDebug}; then
+          # Move debug libraries
+          mkdir "$dev/lib"
+          find "''${!outputLib}/lib" -type f -name '*_dbg.*' -exec mv {} "$dev/lib/" \;
+
+          # Move debug binaries
+          mv "''${!outputBin}/bin/opp_run_dbg" "$dev/bin"
+
+          # Install sources
+          cp -r src "$dev/share/omnetpp"
         fi
 
-        if ! [ -z ''${doc+x} ]; then
+        if ${boolToString installDoc}; then
           echo "Installing documentation..."
 
           mkdir -p "$doc/share/omnetpp"
           cp -r doc "$doc/share/omnetpp/"
         fi
 
-        if [ "${lib.boolToString installIDE}" == "true" ]; then
+        if ${boolToString installIDE}; then
           echo "Installing IDE..."
 
-          cp -r ide "$out/share/omnetpp/"
-          cp -r "${desktopItem}/share/applications" "$out/share/"
-          mkdir "$out/share/icons"
-          ln -s "$out/share/omnetpp/ide/icon.png" "$out/share/icons/omnetpp.png"
+          mkdir -p "$ide/share/omnetpp"
+          cp -r ide "$ide/share/omnetpp/"
+          cp -r "${desktopItem}/share/applications" "$ide/share/"
+          mkdir "$ide/share/icons"
+          ln -s "$ide/share/omnetpp/ide/icon.png" "$ide/share/icons/omnetpp.png"
 
           # Remove JRE if included
-          if [ -e $out/share/omnetpp/ide/jre ]; then
-            rm -r $out/share/omnetpp/ide/jre
+          if [ -e $ide/share/omnetpp/ide/jre ]; then
+            rm -r $ide/share/omnetpp/ide/jre
           fi
         fi
 
-        if ! [ -z ''${samples+x} ]; then
+        if ${boolToString installSamples}; then
           echo "Installing samples..."
 
           # Clean up samples
@@ -300,6 +349,15 @@ let
           cp -r samples "$samples/share/omnetpp/"
         fi
 
+        mkdir -p "$full/share/omnetpp/"{bin,lib}
+        ln -s "$out/share/omnetpp/images" "''${!outputInclude}/include" "$dev/share/omnetpp/Makefile.inc" "$full/share/omnetpp/"
+        ln -s "''${!outputBin}/bin"/* "$dev/bin"/* "$full/share/omnetpp/bin"
+        ln -s "''${!outputLib}/lib"/* "$dev/lib"/* "$full/share/omnetpp/lib"
+        cp -r misc "$full/share/omnetpp/"
+
+        ${boolToString installDoc} && ln -s "$doc/share/omnetpp/doc" "$full/share/omnetpp/"
+        ${boolToString installSamples} && ln -s "$samples/share/omnetpp/samples" "$full/share/omnetpp/"
+
         runHook postInstall
       '';
 
@@ -310,26 +368,42 @@ let
         # - We need to avoid stripping *_dbg libraries
         # - Strip may fail after using patchelf, see https://github.com/NixOS/nixpkgs/pull/85592
         echo Stripping binaries...
-        find "$out/bin" "$out/lib" -type f -not -name '*_dbg.so' -exec $STRIP -S {} \;
+        find "''${!outputBin}/bin" "''${!outputLib}/lib" "$run/bin" -type f -not -name '*_dbg.so' -exec $STRIP -S {} \;
 
         # Replace the build directory in the RPATH of all executables
+        # Also, replace full Qt5 package with Qt5 lib output
         pre_strip_rpath() {
           OLD_RPATH=$(patchelf --print-rpath "$1")
-          NEW_RPATH=''${OLD_RPATH//"$PWD"/"$out"}
+          NEW_RPATH=''${OLD_RPATH//"$PWD"/"$2"}
+          NEW_RPATH=''${NEW_RPATH//"${qt5}"/"${qtbase.out}"}
+          echo "Replacing RPATH \"$OLD_RPATH\" with \"$NEW_RPATH\" in \"$1\""
           patchelf --set-rpath "$NEW_RPATH" "$1"
         }
         export -f pre_strip_rpath
 
-        echo "Fixing up RPATHs in $out..."
-        find "$out" -type f -executable -exec $SHELL -c 'pre_strip_rpath "$0"' {} \;
+        echo "Fixing up RPATHs..."
+        find "''${!outputBin}" "''${!outputLib}" "$run" -type f -executable -exec $SHELL -c "pre_strip_rpath \"\$0\" \"$out\"" {} \;
+        find "$dev" -type f -executable -exec $SHELL -c "pre_strip_rpath \"\$0\" \"$dev\"" {} \;
 
-        if ! [ -z ''${samples+x} ];  then
-          echo "Fixing up RPATHs in $samples.."
+        if ${boolToString buildSamples}; then
+          echo "Fixing up RPATHs for samples.."
           find "$samples" -type f -executable -exec $SHELL -c 'pre_strip_rpath "$0"' {} \;
         fi
 
-        if [ "${lib.boolToString installIDE}" == "true" ]; then
-          ide_bin="$out/share/omnetpp/ide/${if isPre6 then "omnetpp" else "opp_ide"}"
+        if ${boolToString withQtenv}; then
+          echo "Nuking references to Qt..."
+          nuke-refs -e "$out" -e "${glibc}" -e "${stdenv.cc.cc.lib}" \
+             -e "$dev" -e "${glibc.dev}" -e "${stdenv.cc.cc}" \
+             -e "${qtbase}" -e "${qtbase.out}" \
+            "$out/lib/"liboppqtenv*.so "$dev/lib/"liboppqtenv*.so
+          nuke-refs -e "$out" -e "$dev" -e "$bin" \
+            '' + lib.optionalString withOsg "-e \"${libglvnd.dev}\" -e \"${openscenegraph}\" \ " + ''
+            '' + lib.optionalString withOsgEarth "-e \"${osgearth}\" \ " + ''
+            "$dev/share/omnetpp/Makefile.inc"
+        fi
+
+        if ${boolToString installIDE}; then
+          ide_bin="$ide/share/omnetpp/ide/${if isPre6 then "omnetpp" else "opp_ide"}"
 
           # Patch IDE binary
           echo "Patching IDE launcher interpreter..."
@@ -338,9 +412,9 @@ let
 
           # Create wrapper for IDE
           echo "Generating IDE launch wrapper..."
-          makeWrapper "$ide_bin" "$out/bin/omnetpp" \
-            --set OMNETPP_ROOT "$out/share/omnetpp" \
-            --set OMNETPP_CONFIGFILE "$out/share/omnetpp/Makefile.inc" \
+          makeWrapper "$ide_bin" "$ide/bin/omnetpp" \
+            --set OMNETPP_ROOT "$full/share/omnetpp" \
+            --set OMNETPP_CONFIGFILE "$full/share/omnetpp/Makefile.inc" \
             --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ glib gtk3-x11 webkitgtk xorg.libXtst ]}" \
             --prefix PATH : "${lib.makeBinPath ([ jdk11 gnumake graphviz doxygen gcc gdb ] ++ lib.optional (!isPre6) python)}"
         fi
@@ -348,9 +422,6 @@ let
 
       setupHooks = [
         (writeScript "setupHook.sh" ''
-          export OMNETPP_ROOT=@out@/share/omnetpp
-          export OMNETPP_CONFIGFILE=@out@/share/omnetpp/Makefile.inc
-
           addToFileSearchPathWithCustomDelimiter() {
               local delimiter="$1"
               local varName="$2"
@@ -381,28 +452,6 @@ let
       ];
 
       passthru = rec {
-        core = callPackage pkg (attrs // {
-          installIDE = false;
-        });
-
-        minimal = callPackage pkg (attrs // {
-          installIDE = false;
-          buildDebug = false;
-
-          withQtenv = false;
-          withOsg = false;
-          withOsgEarth = false;
-        });
-
-        minimal-gui = callPackage pkg (attrs // {
-          installIDE = false;
-          buildDebug = false;
-
-          withQtenv = true;
-          withOsg = true;
-          withOsgEarth = true;
-        });
-
         models = callPackage ../omnetpp-models {
           omnetpp = self;
         };

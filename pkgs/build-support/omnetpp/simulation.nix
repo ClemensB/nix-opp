@@ -38,12 +38,6 @@ let
         changeDir = self;
       };
 
-      runWithGUI = mkOmnetppRunwrapper {
-        buildInputs = [ self ] ++ propagatedBuildInputs;
-        changeDir = self;
-        withGUI = true;
-      };
-
       results = runCommand "${name}-results" {} ''
         ${self.run} --result-dir="$out"
       '';
@@ -51,7 +45,7 @@ let
       singularity = singularity-tools.buildImage {
         name = "${name}-singularity-image";
         diskSize = 4096;
-        runScript = "#!${stdenv.shell}\nexec ${self.runwrapper} $@";
+        runScript = "#!${stdenv.shell}\nexec ${self.run} $@";
       };
     };
   };

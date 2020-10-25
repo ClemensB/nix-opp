@@ -1,0 +1,25 @@
+From 2924a1be330e4d7ad7c1d9cac111bfd46172850d Mon Sep 17 00:00:00 2001
+From: Clemens Boos <clemensboos@gmail.com>
+Date: Fri, 23 Oct 2020 03:36:28 +0200
+Subject: [PATCH] Set QT_QPA_PLATFORM_PLUGIN_PATH
+
+---
+ src/qtenv/qtenv.cc | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/src/qtenv/qtenv.cc b/src/qtenv/qtenv.cc
+index 522659fc4f..d3f90ff59c 100644
+--- a/src/qtenv/qtenv.cc
++++ b/src/qtenv/qtenv.cc
+@@ -535,6 +535,8 @@ static void signalHandler(int signum)
+ 
+ void Qtenv::doRun()
+ {
++    setenv("QT_QPA_PLATFORM_PLUGIN_PATH", "@QT_QPA_PLATFORM_PLUGIN_PATH@", true);
++
+     //
+     // SETUP
+     //
+-- 
+2.28.0
+
