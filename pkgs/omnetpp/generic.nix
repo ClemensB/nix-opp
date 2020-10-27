@@ -182,7 +182,7 @@ let
         # Since users are building binaries on their own, we cannot rely on wrappers for this
         if ${boolToString withQtenv}; then
           substituteInPlace src/qtenv/qtenv.cc \
-            --subst-var-by QT_QPA_PLATFORM_PLUGIN_PATH "${qtbase}/lib/qt-${qtbase.version}/plugins"
+            --subst-var-by QT_PLUGIN_PATH "${qtbase}/lib/qt-${qtbase.version}/plugins"
         fi
       '';
 

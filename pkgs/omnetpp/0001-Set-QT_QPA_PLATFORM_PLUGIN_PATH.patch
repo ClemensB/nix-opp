@@ -11,11 +11,12 @@ diff --git a/src/qtenv/qtenv.cc b/src/qtenv/qtenv.cc
 index 522659fc4f..d3f90ff59c 100644
 --- a/src/qtenv/qtenv.cc
 +++ b/src/qtenv/qtenv.cc
-@@ -535,6 +535,8 @@ static void signalHandler(int signum)
+@@ -535,6 +535,9 @@ static void signalHandler(int signum)
  
  void Qtenv::doRun()
  {
-+    setenv("QT_QPA_PLATFORM_PLUGIN_PATH", "@QT_QPA_PLATFORM_PLUGIN_PATH@", true);
++    setenv("QT_PLUGIN_PATH", "@QT_PLUGIN_PATH@", true);
++    setenv("QT_QPA_PLATFORM_PLUGIN_PATH", "@QT_PLUGIN_PATH@", true);
 +
      //
      // SETUP
