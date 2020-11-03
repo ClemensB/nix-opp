@@ -1,4 +1,10 @@
 {
+  version,
+  rev,
+  sha256
+}:
+
+{
   lib,
 
   stdenv,
@@ -48,13 +54,12 @@ assert withOSG -> withGUI;
 
 stdenv.mkDerivation rec {
   name = "sumo-${version}";
-  version = "1.5.0";
+  inherit version;
 
   src = fetchFromGitHub {
     owner = "eclipse";
     repo = "sumo";
-    rev = "3a3be608d2408d7cbf10f6bba939254ef439c209";
-    sha256 = "0pflzq3x8blqm4dalla1qdysh7nzc2j4vmb496qr1drnykz9c022";
+    inherit rev sha256;
   };
 
   nativeBuildInputs = [

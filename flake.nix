@@ -21,17 +21,11 @@
             omnetpp = final.omnetpp562;
             omnetppModels = final.omnetpp.models;
 
-            sumo = final.callPackage ./pkgs/sumo {};
-            sumo-minimal = final.sumo.override {
-              withEigen = false;
-              withFfmpeg = false;
-              withGDAL = false;
-              withGL2PS = false;
-              withGUI = false;
-              withOSG = false;
-              withProj = false;
-              withSWIG = false;
-            };
+            sumo = final.sumo150;
+            sumo120 = final.callPackage ./pkgs/sumo/1.2.0.nix {};
+            sumo150 = final.callPackage ./pkgs/sumo/1.5.0.nix {};
+            sumo160 = final.callPackage ./pkgs/sumo/1.6.0.nix {};
+            sumo170 = final.callPackage ./pkgs/sumo/1.7.0.nix {};
           };
 
         packages.x86_64-linux = {
@@ -44,7 +38,10 @@
             omnetpp60pre8
 
             sumo
-            sumo-minimal;
+            sumo120
+            sumo150
+            sumo160
+            sumo170;
 
           inherit (pkgs.omnetppModels)
             #example-project
