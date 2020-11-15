@@ -10,7 +10,8 @@
   buildInputs ? [],
   runtimeDeps ? [],
 
-  changeDir ? null
+  changeDir ? null,
+  extraNedDirs ? []
 }:
 
 stdenv.mkDerivation {
@@ -40,6 +41,10 @@ stdenv.mkDerivation {
 
     '' + (lib.optionalString (changeDir != null) ''
     cd "${changeDir}"
+    '') + ''
+
+    '' + (lib.optionalString (extraNedDirs != []) ''
+    export NEDPATH="\''${NEDPATH:+\''${NEDPATH};}${lib.concatStringsSep ";" extraNedDirs}"
     '') + ''
 
     $opp_run $lib_options \$@

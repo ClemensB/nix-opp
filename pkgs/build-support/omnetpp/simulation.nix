@@ -36,6 +36,7 @@ let
       run = mkOmnetppRunwrapper {
         buildInputs = [ self ] ++ propagatedBuildInputs;
         changeDir = self;
+        extraNedDirs = [ self ];
       };
 
       results = runCommand "${name}-results" {} ''
