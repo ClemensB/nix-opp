@@ -33,6 +33,7 @@
   openscenegraph,
   proj,
   python3,
+  python3Packages,
   swig,
   xercesc,
   xorg,
@@ -133,6 +134,20 @@ stdenv.mkDerivation rec {
       export SUMO_HOME=@out@/share/sumo
     '')
   ];
+
+  passthru = {
+    sumolib = python3Packages.buildPythonPackage {
+      pname = "sumolib";
+      inherit version;
+
+      inherit src;
+
+      preConfigure = ''
+        cd tools/build
+        mv setup-sumolib.py setup.py
+      '';
+    };
+  };
 
   meta = with stdenv.lib; {
     description = "A road traffic simulation package";
