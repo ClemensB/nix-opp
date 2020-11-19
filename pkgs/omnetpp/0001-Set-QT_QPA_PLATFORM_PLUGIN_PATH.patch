@@ -15,8 +15,8 @@ index 522659fc4f..d3f90ff59c 100644
  
  void Qtenv::doRun()
  {
-+    setenv("QT_PLUGIN_PATH", "@QT_PLUGIN_PATH@", true);
-+    setenv("QT_QPA_PLATFORM_PLUGIN_PATH", "@QT_PLUGIN_PATH@", true);
++    QApplication::addLibraryPath(QString("@QTBASE_PLUGIN_PATH@"));
++    QApplication::addLibraryPath(QString("@QTSVG_PLUGIN_PATH@"));
 +
      //
      // SETUP

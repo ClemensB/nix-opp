@@ -28,6 +28,7 @@ let
     glibc,
     gnumake,
     graphviz,
+    lldb,
     openmpi,
     perl,
     python2,
@@ -49,6 +50,7 @@ let
     # Provided by the Qt5 package set
     env,
     qtbase,
+    qtsvg,
 
     withQtenv ? true,
     withOsg ? true,
@@ -57,7 +59,7 @@ let
     withOpenMPI ? false,
 
     buildDebug ? true,
-    buildSamples ? true,
+    buildSamples ? false,
 
     installIDE ? true,
     installDoc ? true,
@@ -73,17 +75,22 @@ let
 
     # The way OMNeT++ checks for Qt5 requires all files to reside in the same derivation
     # since it uses qmake to query the include path which returns an incorrect value otherwise.
-    qt5 = env "qt5" [
+    qt5 = env "qt5" ([
       qtbase
       qtbase.dev
       qtbase.out
-    ];
+    ] ++ lib.optionals (!isPre6) [
+      qtsvg
+      qtsvg.dev
+      qtsvg.out
+    ]);
 
     oppPythonPackage = python3.pkgs.buildPythonPackage {
       pname = "omnetpp";
       inherit version src;
 
       propagatedBuildInputs = with python3.pkgs; [
+        lldb
         matplotlib
         numpy
         pandas
@@ -109,6 +116,46 @@ let
         EOF
       '';
     };
+
+    oppIdePythonPackage = python3.pkgs.buildPythonPackage {
+      pname = "omnetpp-scave-pychart-internal";
+      inherit version src;
+
+      propagatedBuildInputs = with python3.pkgs; [
+        lldb
+        matplotlib
+        numpy
+        pandas
+        posix_ipc
+        scipy
+      ];
+
+      preConfigure = ''
+        cd ide/plugins/org.omnetpp.scave.pychart_*/python
+
+        # Integrate base omnetpp package
+        cp -r ../../../../python/omnetpp/scave/* omnetpp/scave
+
+        # Add missing __init__.py for modules
+        find omnetpp -type d -exec touch {}/__init__.py \;
+
+        # Add setup.py for packaging
+        cat << EOF > setup.py
+        from setuptools import setup, find_packages
+
+        setup(
+          name='omnetpp-ide-internal',
+          version='${version}',
+          packages=find_packages(),
+          install_requires=["matplotlib", "numpy", "pandas", "scipy"],
+        )
+        EOF
+      '';
+    };
+
+    oppIdePython3 = python3.withPackages (ps: with ps; [
+      oppIdePythonPackage
+    ]);
 
     oppPython3 = python3.withPackages (ps: with ps; [
       matplotlib
@@ -182,7 +229,8 @@ let
         # Since users are building binaries on their own, we cannot rely on wrappers for this
         if ${boolToString withQtenv}; then
           substituteInPlace src/qtenv/qtenv.cc \
-            --subst-var-by QT_PLUGIN_PATH "${qtbase}/lib/qt-${qtbase.version}/plugins"
+            --subst-var-by QTBASE_PLUGIN_PATH "${qtbase.bin}/lib/qt-${qtbase.version}/plugins" \
+            --subst-var-by QTSVG_PLUGIN_PATH "${qtsvg.bin}/lib/qt-${qtbase.version}/plugins"
         fi
       '';
 
@@ -211,6 +259,8 @@ let
       enableParallelBuilding = true;
       buildModes = lib.optional buildDebug "debug" ++ [ "release" ];
       buildTargets = [ "base" ] ++ lib.optional buildSamples "samples";
+
+      hardeningDisable = [ "all" ];
 
       buildPhase = ''
         runHook preBuild
@@ -394,7 +444,8 @@ let
           echo "Nuking references to Qt..."
           nuke-refs -e "$out" -e "${glibc}" -e "${stdenv.cc.cc.lib}" \
              -e "$dev" -e "${glibc.dev}" -e "${stdenv.cc.cc}" \
-             -e "${qtbase}" -e "${qtbase.out}" \
+             -e "${qtbase.out}" \
+             -e "${qtbase.bin}" -e "${qtsvg.bin}" \
             "$out/lib/"liboppqtenv*.so "$dev/lib/"liboppqtenv*.so
           nuke-refs -e "$out" -e "$dev" -e "$bin" \
             '' + lib.optionalString withOsg "-e \"${libglvnd.dev}\" -e \"${openscenegraph}\" \ " + ''
@@ -416,7 +467,7 @@ let
             --set OMNETPP_ROOT "$full/share/omnetpp" \
             --set OMNETPP_CONFIGFILE "$full/share/omnetpp/Makefile.inc" \
             --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ glib gtk3-x11 webkitgtk xorg.libXtst ]}" \
-            --prefix PATH : "${lib.makeBinPath ([ jdk11 gnumake graphviz doxygen gcc gdb ] ++ lib.optional (!isPre6) python)}"
+            --prefix PATH : "${lib.makeBinPath ([ jdk11 gnumake graphviz doxygen gcc gdb ] ++ lib.optional (!isPre6) oppIdePython3)}"
         fi
       '';
 
