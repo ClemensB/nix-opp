@@ -2,8 +2,7 @@
   stdenv,
   lib,
 
-  omnetpp,
-  qt5
+  omnetpp
 }:
 
 {
@@ -32,6 +31,7 @@ stdenv.mkDerivation {
     lib_options=''${nix_omnetpp_libs[@]/#/-l }
 
     cat << EOF > $out
+    #!$SHELL
     export NEDPATH="$NEDPATH"
     export OMNETPP_IMAGE_PATH="$OMNETPP_IMAGE_PATH"
 
