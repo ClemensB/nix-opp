@@ -466,6 +466,7 @@ let
           makeWrapper "$ide_bin" "$ide/bin/omnetpp" \
             --set OMNETPP_ROOT "$full/share/omnetpp" \
             --set OMNETPP_CONFIGFILE "$full/share/omnetpp/Makefile.inc" \
+            --unset GDK_PIXBUF_MODULE_FILE \
             --prefix LD_LIBRARY_PATH : "${lib.makeLibraryPath [ glib gtk3-x11 webkitgtk xorg.libXtst ]}" \
             --prefix PATH : "${lib.makeBinPath ([ jdk11 gnumake graphviz doxygen gcc gdb ] ++ lib.optional (!isPre6) oppIdePython3)}"
         fi
