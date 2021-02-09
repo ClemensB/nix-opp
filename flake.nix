@@ -21,11 +21,12 @@
             omnetpp = final.omnetpp562;
             omnetppModels = final.omnetpp.models;
 
-            sumo = final.sumo150;
+            sumo = final.sumo180;
             sumo120 = final.callPackage ./pkgs/sumo/1.2.0.nix {};
             sumo150 = final.callPackage ./pkgs/sumo/1.5.0.nix {};
             sumo160 = final.callPackage ./pkgs/sumo/1.6.0.nix {};
             sumo170 = final.callPackage ./pkgs/sumo/1.7.0.nix {};
+            sumo180 = final.callPackage ./pkgs/sumo/1.8.0.nix {};
           };
 
         packages.x86_64-linux = {
@@ -41,7 +42,8 @@
             sumo120
             sumo150
             sumo160
-            sumo170;
+            sumo170
+            sumo180;
 
           inherit (pkgs.omnetppModels)
             #example-project
