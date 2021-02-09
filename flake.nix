@@ -16,7 +16,7 @@
 
             omnetpp561 = final.libsForQt5.callPackage ./pkgs/omnetpp/5.6.1.nix {};
             omnetpp562 = final.libsForQt5.callPackage ./pkgs/omnetpp/5.6.2.nix {};
-            omnetpp60pre9 = final.libsForQt5.callPackage ./pkgs/omnetpp/6.0pre9.nix {};
+            omnetpp60pre10 = final.libsForQt5.callPackage ./pkgs/omnetpp/6.0pre10.nix {};
 
             omnetpp = final.omnetpp562;
             omnetppModels = final.omnetpp.models;
@@ -36,7 +36,7 @@
             omnetpp
             omnetpp561
             omnetpp562
-            omnetpp60pre9
+            omnetpp60pre10
 
             sumo
             sumo120
@@ -76,9 +76,9 @@
             program = "${self.packages.x86_64-linux.omnetpp562.ide}/bin/omnetpp-with-tools";
           };
 
-          omnetpp60pre9 = {
+          omnetpp60pre10 = {
             type = "app";
-            program = "${self.packages.x86_64-linux.omnetpp60pre9.ide}/bin/omnetpp-with-tools";
+            program = "${self.packages.x86_64-linux.omnetpp60pre10.ide}/bin/omnetpp-with-tools";
           };
 
           omnetpp = self.apps.x86_64-linux.omnetpp562;
