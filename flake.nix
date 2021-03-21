@@ -56,15 +56,6 @@
             veins50;
         };
 
-        devShell.x86_64-linux = pkgs.mkShell {
-          buildInputs = [
-            (pkgs.python3.withPackages (ps: [
-              self.packages.x86_64-linux.sumo.sumolib
-              self.packages.x86_64-linux.omnetpp60pre9.pythonPackage
-            ]))
-          ];
-        };
-
         apps.x86_64-linux = {
           omnetpp561 = {
             type = "app";
