@@ -34,11 +34,13 @@ let
 
         veins = self.veins50;
         veins50 = callPackage ./veins/5.0.nix { inet = self.inet411; };
+        veins51 = callPackage ./veins/5.1.nix { inet = self.inet421; };
 
         inet = self.inet420;
         inet411 = callPackage ./inet/4.1.1.nix {};
         inet412 = callPackage ./inet/4.1.2.nix {};
         inet420 = callPackage ./inet/4.2.0.nix {};
+        inet421 = callPackage ./inet/4.2.1.nix {};
       }
   );
 in

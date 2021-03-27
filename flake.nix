@@ -51,9 +51,11 @@
             inet411
             inet412
             inet420
+            inet421
 
             veins
-            veins50;
+            veins50
+            veins51;
         };
 
         apps.x86_64-linux = {
