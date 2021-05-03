@@ -27,6 +27,8 @@
             sumo160 = final.callPackage ./pkgs/sumo/1.6.0.nix {};
             sumo170 = final.callPackage ./pkgs/sumo/1.7.0.nix {};
             sumo180 = final.callPackage ./pkgs/sumo/1.8.0.nix {};
+            sumo190 = final.callPackage ./pkgs/sumo/1.9.0.nix {};
+            sumo191 = final.callPackage ./pkgs/sumo/1.9.1.nix {};
           };
 
         packages.x86_64-linux = {
@@ -43,6 +45,8 @@
             sumo150
             sumo160
             sumo170
+            sumo190
+            sumo191
             sumo180;
 
           inherit (pkgs.omnetppModels)
