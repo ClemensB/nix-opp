@@ -23,10 +23,14 @@
 
             sumo = final.sumo180;
             sumo120 = final.callPackage ./pkgs/sumo/1.2.0.nix {};
+            sumo130 = final.callPackage ./pkgs/sumo/1.3.0.nix {};
+            sumo131 = final.callPackage ./pkgs/sumo/1.3.1.nix {};
+            sumo140 = final.callPackage ./pkgs/sumo/1.4.0.nix {};
             sumo150 = final.callPackage ./pkgs/sumo/1.5.0.nix {};
             sumo160 = final.callPackage ./pkgs/sumo/1.6.0.nix {};
             sumo170 = final.callPackage ./pkgs/sumo/1.7.0.nix {};
             sumo180 = final.callPackage ./pkgs/sumo/1.8.0.nix {};
+            sumo180Debug = final.sumo180.override { buildDebug = true; };
             sumo190 = final.callPackage ./pkgs/sumo/1.9.0.nix {};
             sumo191 = final.callPackage ./pkgs/sumo/1.9.1.nix {};
           };
@@ -42,12 +46,16 @@
 
             sumo
             sumo120
+            sumo130
+            sumo131
+            sumo140
             sumo150
             sumo160
             sumo170
+            sumo180
+            sumo180Debug
             sumo190
-            sumo191
-            sumo180;
+            sumo191;
 
           inherit (pkgs.omnetppModels)
             #example-project

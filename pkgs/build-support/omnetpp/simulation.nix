@@ -6,6 +6,8 @@
   symlinkJoin,
   singularity-tools,
 
+  omnetpp,
+
   mkOmnetppRunwrapper
 }:
 
@@ -15,14 +17,20 @@
   src,
   sourceRoot ? "",
 
-  propagatedBuildInputs ? []
+  propagatedBuildInputs ? [],
+
+  runtimeDeps ? [],
+
+  resultBasename ? "General",
+
+  ...
 } @ attrs:
 
 let
   inherit (builtins) head tail;
 
-  self = stdenv.mkDerivation {
-    inherit name src sourceRoot propagatedBuildInputs;
+  self = stdenv.mkDerivation ({
+    # inherit name src sourceRoot propagatedBuildInputs;
 
     phases = [ "unpackPhase" "patchPhase" "installPhase" ];
 
@@ -38,6 +46,7 @@ let
     passthru = {
       run = mkOmnetppRunwrapper {
         buildInputs = [ self ] ++ propagatedBuildInputs;
+        inherit runtimeDeps;
         changeDir = self;
         extraNedDirs = [ self ];
       };
@@ -146,9 +155,13 @@ let
               # A run's result should only depend on the used runwrapper (which includes all dependencies)
               # as well as simulation configuration and repetition.
               runid = "General-${runwrapperHash}-${configHash}-${repetition}";
+
+              resultdir= "\${resultdir}";
             in
               runCommand "${self.name}-${runid}" {} ''
-                ${self.run} -f "${omnetppIni}" -c "General" -u Cmdenv -r ${repetition} --result-dir "$out"
+                mkdir "$out"
+                substitute "${omnetppIni}" "omnetpp.ini" --replace 'results/' "$out/"
+                ${self.run} -f "omnetpp.ini" -c "General" -u Cmdenv -r ${repetition} --result-dir "$out"
 
                 # Rewrite run id and strip timestamp and process id to enforce determinism
                 sed -i -E \
@@ -156,6 +169,9 @@ let
                   -e '/^attr datetime/ s/[^ ]+$/19700101-00:00:00/' \
                   -e '/^attr processid/ s/[0-9]+$/1/' \
                   "$out"/*
+
+                # Regenerate vector index files
+                ${omnetpp}/bin/opp_scavetool i "$out"/*.vec
               '';
 
           # Renames a simulation run's output files to match match the given itervars and mimic
@@ -180,7 +196,7 @@ let
                   ext="''${filename##*.}"
                   name="''${filename%.*}"
                   cfgname="''${name%%-#${repetition}}"
-                  ln -s "$path" "$out/$cfgname${itervarsStr}-#${repetition}.$ext"
+                  ln -s "$path" "$out/${resultBasename}${itervarsStr}-#${repetition}.$ext"
                 done
               '';
 
@@ -197,6 +213,6 @@ let
         runScript = "#!${stdenv.shell}\nexec ${self.run} $@";
       };
     };
-  };
+  } // attrs);
 in
   self

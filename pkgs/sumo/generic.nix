@@ -39,6 +39,8 @@
   xorg,
   zlib,
 
+  buildDebug ? false,
+
   withEigen ? true,
   withFfmpeg ? true,
   withGDAL ? true,
@@ -111,6 +113,8 @@ stdenv.mkDerivation rec {
 
   outputs = [ "out" "tools" "pythonPackage" ];
 
+  cmakeBuildType = if buildDebug then "Debug" else "Release";
+
   postInstall = ''
     # Add SUMO_HOME to environment of binaries
     for f in "$out"/bin/*; do
@@ -134,6 +138,8 @@ stdenv.mkDerivation rec {
       export SUMO_HOME=@out@/share/sumo
     '')
   ];
+
+  dontStrip = buildDebug;
 
   passthru = {
     sumolib = python3Packages.buildPythonPackage {
